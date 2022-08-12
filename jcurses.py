@@ -317,67 +317,70 @@ class jcurses:
         self.termline()
         while not self.softquit:
             tempstack = self.register_char()
-            if len(tempstack) > 0:
-                for i in tempstack:
-                    if i == "alt":
-                        pass
-                    elif segmented:
-                        pass
-                    elif i in self.trigger_dict:
-                        self.buf[0] = self.trigger_dict[i]
-                        self.softquit = True
-                    elif i == "bck":
-                        self.backspace()
-                    elif i == "del":
-                        self.delete()
-                    elif i == "home":
-                        self.home()
-                    elif i == "end":
-                        self.end()
-                    elif i == "up":
-                        pass
-                    elif i == "ins":
-                        pass
-                    elif i == "left":
-                        if len(self.buf[1]) > self.focus:
-                            stdout.write("\010")
-                            self.focus += 1
-                    elif i == "right":
-                        if self.focus > 0:
-                            stdout.write(ESCK + "1C")
-                            self.focus -= 1
-                    elif i == "down":
-                        pass
-                    elif i == "tab":
-                        pass
-                    elif self.trigger_dict["rest"] == "stack" and (
-                        self.trigger_dict["rest_a"] == "common"
-                        and i not in {"alt", "ctrl", "ctrlD"}
-                    ):  # Arknights "PatriotExtra" theme starts playing
-                        if self.focus is 0:
-                            self.buf[1] += i
-                            if self.trigger_dict["echo"] in {"common", "all"}:
-                                stdout.write(i)
-                        else:
-                            insertion_pos = len(self.buf[1]) - self.focus
-
-                            self.buf[1] = (
-                                self.buf[1][:insertion_pos]
-                                + i
-                                + self.buf[1][insertion_pos:]
-                            )
-
-                            # frontend insertion
-                            for d in self.buf[1][insertion_pos:]:
-                                stdout.write(d)
-
-                            steps_in = len(self.buf[1][insertion_pos:])
-
-                            for e in range(steps_in - 1):
+            try:
+                if len(tempstack) > 0:
+                    for i in tempstack:
+                        if i == "alt":
+                            pass
+                        elif segmented:
+                            pass
+                        elif i in self.trigger_dict:
+                            self.buf[0] = self.trigger_dict[i]
+                            self.softquit = True
+                        elif i == "bck":
+                            self.backspace()
+                        elif i == "del":
+                            self.delete()
+                        elif i == "home":
+                            self.home()
+                        elif i == "end":
+                            self.end()
+                        elif i == "up":
+                            pass
+                        elif i == "ins":
+                            pass
+                        elif i == "left":
+                            if len(self.buf[1]) > self.focus:
                                 stdout.write("\010")
+                                self.focus += 1
+                        elif i == "right":
+                            if self.focus > 0:
+                                stdout.write(ESCK + "1C")
+                                self.focus -= 1
+                        elif i == "down":
+                            pass
+                        elif i == "tab":
+                            pass
+                        elif self.trigger_dict["rest"] == "stack" and (
+                            self.trigger_dict["rest_a"] == "common"
+                            and i not in {"alt", "ctrl", "ctrlC", "ctrlL", "ctrlK", "ctrlD"}
+                        ):  # Arknights "PatriotExtra" theme starts playing
+                            if self.focus is 0:
+                                self.buf[1] += i
+                                if self.trigger_dict["echo"] in {"common", "all"}:
+                                    stdout.write(i)
+                            else:
+                                insertion_pos = len(self.buf[1]) - self.focus
 
-                            del steps_in, insertion_pos
-                del tempstack
+                                self.buf[1] = (
+                                    self.buf[1][:insertion_pos]
+                                    + i
+                                    + self.buf[1][insertion_pos:]
+                                )
+
+                                # frontend insertion
+                                for d in self.buf[1][insertion_pos:]:
+                                    stdout.write(d)
+
+                                steps_in = len(self.buf[1][insertion_pos:])
+
+                                for e in range(steps_in - 1):
+                                    stdout.write("\010")
+
+                                del steps_in, insertion_pos
+            except KeyboardInterrupt:
+                pass
+            del tempstack
         del segmented
         return self.buf
 
