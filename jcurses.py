@@ -353,16 +353,7 @@ class jcurses:
                             pass
                         elif self.trigger_dict["rest"] == "stack" and (
                             self.trigger_dict["rest_a"] == "common"
-                            and i
-                            not in {
-                                "alt",
-                                "ctrl",
-                                "ctrlC",
-                                "ctrlL",
-                                "ctrlK",
-                                "ctrlD",
-                                "ctrlX",
-                            }
+                            and not (i.startswith("ctrl") or i.startswith("alt"))
                         ):  # Arknights "PatriotExtra" theme starts playing
                             if self.focus is 0:
                                 self.buf[1] += i
