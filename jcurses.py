@@ -72,7 +72,7 @@ class jcurses:
         """
         stdout.write(f"{ESCK}1C" * self.focus)
         self.focus = 0
-        
+
     def overflow_check(self):
         return False if self.detect_pos()[1] is not self.ctx_dict["line_len"] else True
 
@@ -375,7 +375,7 @@ class jcurses:
                                         self.buf[0] = self.trigger_dict["overflow"]
                                     except KeyError:
                                         self.buf[0] = 0
-                                    
+
                             else:
                                 self.buf[1] += i
                         else:
