@@ -34,6 +34,10 @@ class jcurses:
         self.buf = [0, ""]
         self.focus = 0
         self.stdin = ""  # a register for when we need to clear stdin
+        self.spacerem = 0
+
+    def update_rem(self):
+        self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
     def backspace(self, n=1):
         """
@@ -44,7 +48,9 @@ class jcurses:
                 if self.focus == 0:
                     self.buf[1] = self.buf[1][:-1]
                     stdout.write("\010 \010")
+                    self.spacerem += 1
                 else:
+                    self.spacerem += 1
                     stdout.write("\010")
                     insertion_pos = len(self.buf[1]) - self.focus - 1
                     self.buf[
@@ -73,8 +79,10 @@ class jcurses:
         stdout.write(f"{ESCK}1C" * self.focus)
         self.focus = 0
 
-    def overflow_check(self):
-        return False if self.detect_pos()[1] is not self.ctx_dict["line_len"] else True
+    def overflow_check(self, force=False):
+        if self.spacerem is 0 or force:
+            self.update_rem()
+        return False if self.spacerem > 0 else True
 
     def delete(self, n=1):
         """
@@ -85,6 +93,7 @@ class jcurses:
                 if self.focus == len(self.buf[1]):
                     self.buf[1] = self.buf[1][1:]
                     stdout.write(f"{self.buf[1]} " + "\010" * self.focus)
+                    self.spacerem += 1
                     self.focus -= 1
                 else:
                     insertion_pos = len(self.buf[1]) - self.focus
@@ -94,6 +103,7 @@ class jcurses:
                     stdout.write(
                         f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D"
                     )  # frontend
+                    self.spacerem += 1
                     self.focus -= 1
                     del insertion_pos
 
@@ -157,6 +167,7 @@ class jcurses:
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
                 self.ctx_dict["line_len"] = res[1]
+                self.spacerem = res[1] - self.detect_pos()[1]
                 del strr
                 d = False
             except ValueError:
@@ -365,6 +376,7 @@ class jcurses:
                             if self.trigger_dict["echo"] in {"common", "all"}:
                                 if not self.overflow_check():
                                     stdout.write(i)
+                                    self.spacerem -= len(i)
                                     self.buf[1] += i
                                 else:
                                     self.stdin += i
@@ -407,6 +419,7 @@ class jcurses:
         stdout.write(self.trigger_dict["prefix"] + self.buf[1])
         if self.focus > 0:
             stdout.write(f"{ESCK}{self.focus}D")
+        self.update_rem()
 
     def move(self, ctx=None, x=0, y=0):
         """
