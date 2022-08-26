@@ -27,12 +27,13 @@ class jcurses:
         self.ctx_dict = {
             "top_left": [1, 1],
             "bottom_left": [1, 1],
+            "line_len": 1,
         }
         self.trigger_dict = None
         self.dmtex_suppress = False
         self.buf = [0, ""]
         self.focus = 0
-        self.stdin = None  # a register for when we need to clear stdin
+        self.stdin = ""  # a register for when we need to clear stdin
 
     def backspace(self, n=1):
         """
@@ -71,6 +72,9 @@ class jcurses:
         """
         stdout.write(f"{ESCK}1C" * self.focus)
         self.focus = 0
+        
+    def overflow_check(self):
+        return False if self.detect_pos()[1] is not self.ctx_dict["line_len"] else True
 
     def delete(self, n=1):
         """
@@ -152,6 +156,7 @@ class jcurses:
                 res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
+                self.ctx_dict["line_len"] = res[1]
                 del strr
                 d = False
             except ValueError:
@@ -196,7 +201,7 @@ class jcurses:
             n = runtime.serial_bytes_available
             if n > 0:
                 got = True
-                if self.stdin is None:
+                if len(self.stdin) is not 0:
                     self.stdin = stdin.read(n)
                 else:
                     self.stdin += stdin.read(n)
@@ -255,11 +260,11 @@ class jcurses:
         stack = []
         try:
             n = runtime.serial_bytes_available
-            if n > 0 or self.stdin is not None:
+            if n > 0 or len(self.stdin) is not 0:
                 i = None
-                if self.stdin is not None:
+                if len(self.stdin) is not 0:
                     i = self.stdin
-                    self.stdin = None
+                    self.stdin = ""
                 else:
                     i = stdin.read(n)
 
@@ -318,66 +323,80 @@ class jcurses:
         while not self.softquit:
             tempstack = self.register_char()
             try:
-                if len(tempstack) > 0:
-                    for i in tempstack:
-                        if i == "alt":
-                            pass
-                        elif segmented:
-                            pass
-                        elif i in self.trigger_dict:
-                            self.buf[0] = self.trigger_dict[i]
-                            self.softquit = True
-                        elif i == "bck":
-                            self.backspace()
-                        elif i == "del":
-                            self.delete()
-                        elif i == "home":
-                            self.home()
-                        elif i == "end":
-                            self.end()
-                        elif i == "up":
-                            pass
-                        elif i == "ins":
-                            pass
-                        elif i == "left":
-                            if len(self.buf[1]) > self.focus:
-                                stdout.write("\010")
-                                self.focus += 1
-                        elif i == "right":
-                            if self.focus > 0:
-                                stdout.write(ESCK + "1C")
-                                self.focus -= 1
-                        elif i == "down":
-                            pass
-                        elif i == "tab":
-                            pass
-                        elif self.trigger_dict["rest"] == "stack" and (
-                            self.trigger_dict["rest_a"] == "common"
-                            and not (i.startswith("ctrl") or i.startswith("alt"))
-                        ):  # Arknights "PatriotExtra" theme starts playing
-                            if self.focus is 0:
-                                self.buf[1] += i
-                                if self.trigger_dict["echo"] in {"common", "all"}:
+                while tempstack and not self.softquit:
+                    tempstack.reverse()
+                    i = tempstack.pop()
+                    if i == "alt":
+                        pass
+                    elif segmented:
+                        pass
+                    elif i in self.trigger_dict:
+                        self.buf[0] = self.trigger_dict[i]
+                        self.softquit = True
+                    elif i == "bck":
+                        self.backspace()
+                    elif i == "del":
+                        self.delete()
+                    elif i == "home":
+                        self.home()
+                    elif i == "end":
+                        self.end()
+                    elif i == "up":
+                        pass
+                    elif i == "ins":
+                        pass
+                    elif i == "left":
+                        if len(self.buf[1]) > self.focus:
+                            stdout.write("\010")
+                            self.focus += 1
+                    elif i == "right":
+                        if self.focus > 0:
+                            stdout.write(ESCK + "1C")
+                            self.focus -= 1
+                    elif i == "down":
+                        pass
+                    elif i == "tab":
+                        pass
+                    elif self.trigger_dict["rest"] == "stack" and (
+                        self.trigger_dict["rest_a"] == "common"
+                        and not (i.startswith("ctrl") or i.startswith("alt"))
+                    ):  # Arknights "PatriotExtra" theme starts playing
+                        if self.focus is 0:
+                            if self.trigger_dict["echo"] in {"common", "all"}:
+                                if not self.overflow_check():
                                     stdout.write(i)
+                                    self.buf[1] += i
+                                else:
+                                    self.stdin += i
+                                    while tempstack:
+                                        self.stdin += tempstack.pop()
+                                    self.softquit = True
+                                    try:
+                                        self.buf[0] = self.trigger_dict["overflow"]
+                                    except KeyError:
+                                        self.buf[0] = 0
+                                    
                             else:
-                                insertion_pos = len(self.buf[1]) - self.focus
+                                self.buf[1] += i
+                        else:
+                            insertion_pos = len(self.buf[1]) - self.focus
 
-                                self.buf[1] = (
-                                    self.buf[1][:insertion_pos]
-                                    + i
-                                    + self.buf[1][insertion_pos:]
-                                )
+                            self.buf[1] = (
+                                self.buf[1][:insertion_pos]
+                                + i
+                                + self.buf[1][insertion_pos:]
+                            )
 
-                                # frontend insertion
-                                for d in self.buf[1][insertion_pos:]:
-                                    stdout.write(d)
+                            # frontend insertion
+                            for d in self.buf[1][insertion_pos:]:
+                                stdout.write(d)
 
-                                steps_in = len(self.buf[1][insertion_pos:])
+                            steps_in = len(self.buf[1][insertion_pos:])
 
-                                for e in range(steps_in - 1):
-                                    stdout.write("\010")
+                            for e in range(steps_in - 1):
+                                stdout.write("\010")
 
-                                del steps_in, insertion_pos
+                            del steps_in, insertion_pos
             except KeyboardInterrupt:
                 pass
             del tempstack
