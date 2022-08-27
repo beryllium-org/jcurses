@@ -33,7 +33,7 @@ class jcurses:
         self.dmtex_suppress = False
         self.buf = [0, ""]
         self.focus = 0
-        self.stdin = b""  # a register for when we need to clear stdin
+        self.stdin = None  # a register for when we need to clear stdin
         self.spacerem = 0
 
     def update_rem(self):
@@ -204,15 +204,18 @@ class jcurses:
         """
         remove gibberrish from stdin when we need to read ansi escape codes
         """
-        
+
         d = True  # done
         got = False  # we got at least a few
-        
+
         while d:
             n = runtime.serial_bytes_available
             if n > 0:
                 got = True
-                self.stdin += stdin.read(n)
+                if self.stdin is None:
+                    self.stdin = stdin.read(n)
+                else:
+                    self.stdin += stdin.read(n)
                 if got:
                     sleep(0.0003)
                     """
@@ -268,11 +271,11 @@ class jcurses:
         stack = []
         try:
             n = runtime.serial_bytes_available
-            if n > 0 or len(self.stdin) is not 0:
+            if n > 0 or self.stdin is not None:
                 i = None
-                if len(self.stdin) is not 0:
+                if self.stdin is not None:
                     i = self.stdin
-                    self.stdin = b""
+                    self.stdin = None
                 else:
                     i = stdin.read(n)
 
@@ -376,7 +379,10 @@ class jcurses:
                                     self.spacerem -= len(i)
                                     self.buf[1] += i
                                 else:
-                                    self.stdin += i
+                                    if self.stdin is None:
+                                        self.stdin = i
+                                    else:
+                                        self.stdin += i
                                     while tempstack:
                                         self.stdin += tempstack.pop()
                                     self.softquit = True
