@@ -33,7 +33,7 @@ class jcurses:
         self.dmtex_suppress = False
         self.buf = [0, ""]
         self.focus = 0
-        self.stdin = ""  # a register for when we need to clear stdin
+        self.stdin = b""  # a register for when we need to clear stdin
         self.spacerem = 0
 
     def update_rem(self):
@@ -204,18 +204,15 @@ class jcurses:
         """
         remove gibberrish from stdin when we need to read ansi escape codes
         """
-
+        
         d = True  # done
         got = False  # we got at least a few
-
+        
         while d:
             n = runtime.serial_bytes_available
             if n > 0:
                 got = True
-                if len(self.stdin) is not 0:
-                    self.stdin = stdin.read(n)
-                else:
-                    self.stdin += stdin.read(n)
+                self.stdin += stdin.read(n)
                 if got:
                     sleep(0.0003)
                     """
@@ -275,7 +272,7 @@ class jcurses:
                 i = None
                 if len(self.stdin) is not 0:
                     i = self.stdin
-                    self.stdin = ""
+                    self.stdin = b""
                 else:
                     i = stdin.read(n)
 
