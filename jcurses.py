@@ -34,7 +34,7 @@ class jcurses:
         self.buf = [0, ""]
         self.focus = 0
         self.stdin = None  # a register for when we need to clear stdin
-        self.spacerem = 0
+        self.spacerem = -1
 
     def update_rem(self):
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
@@ -79,8 +79,8 @@ class jcurses:
         stdout.write(f"{ESCK}1C" * self.focus)
         self.focus = 0
 
-    def overflow_check(self, force=False):
-        if self.spacerem is 0 or force:
+    def overflow_check(self):
+        if self.spacerem is -1:
             self.update_rem()
         return False if self.spacerem > 0 else True
 
@@ -333,9 +333,10 @@ class jcurses:
         self.termline()
         while not self.softquit:
             tempstack = self.register_char()
+            if tempstack:
+                tempstack.reverse()
             try:
                 while tempstack and not self.softquit:
-                    tempstack.reverse()
                     i = tempstack.pop()
                     if i == "alt":
                         pass
