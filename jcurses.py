@@ -338,9 +338,7 @@ class jcurses:
             try:
                 while tempstack and not self.softquit:
                     i = tempstack.pop()
-                    if i == "alt":
-                        pass
-                    elif segmented:
+                    if i == "alt" or segmented:
                         pass
                     elif i in self.trigger_dict:
                         self.buf[0] = self.trigger_dict[i]
@@ -353,9 +351,7 @@ class jcurses:
                         self.home()
                     elif i == "end":
                         self.end()
-                    elif i == "up":
-                        pass
-                    elif i == "ins":
+                    elif i in ["up", "ins", "down", "tab"]:
                         pass
                     elif i == "left":
                         if len(self.buf[1]) > self.focus:
@@ -365,10 +361,6 @@ class jcurses:
                         if self.focus > 0:
                             stdout.write(ESCK + "1C")
                             self.focus -= 1
-                    elif i == "down":
-                        pass
-                    elif i == "tab":
-                        pass
                     elif self.trigger_dict["rest"] == "stack" and (
                         self.trigger_dict["rest_a"] == "common"
                         and not (i.startswith("ctrl") or i.startswith("alt"))
