@@ -39,6 +39,13 @@ class jcurses:
     def update_rem(self):
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
+    def clear_buffer(self):
+        self.stdin = None
+        n = runtime.serial_bytes_available
+        if n > 0:
+            void = stdin.read(n)
+            del void
+
     def backspace(self, n=1):
         """
         Arguably most used key
@@ -219,9 +226,9 @@ class jcurses:
                 if got:
                     sleep(0.0003)
                     """
-                    'Nough time for at least a few more bytes to come, do not change
-                    Without it, the captures right after, would recieve all the garbage
-                    """
+                                'Nough time for at least a few more bytes to come, do not change
+                                Without it, the captures right after, would recieve all the garbage
+                                """
             else:
                 d = False
         del n, d, got
