@@ -46,6 +46,25 @@ class jcurses:
             void = stdin.read(n)
             del void
 
+    def anykey(self, msg=None):
+        """
+        Press any key to continue, returns key
+        Optionally specify message
+        """
+        ret = None
+        n = None
+        if msg is not None:
+            stdout.write(msg)
+        del msg
+        while True:
+            sleep(0.5)
+            n = runtime.serial_bytes_available
+            if n > 0:
+                ret = stdin.read(n)
+                break
+        del n
+        return ret
+
     def backspace(self, n=1):
         """
         Arguably most used key
