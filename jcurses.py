@@ -26,8 +26,8 @@ class jcurses:
         self.text_stepping = 0
         self.ctx_dict = {
             "top_left": [1, 1],
-            "bottom_left": [1, 1],
-            "line_len": 1,
+            "bottom_left": [255, 255],
+            "line_len": 255,
         }
         self.trigger_dict = None
         self.dmtex_suppress = False
