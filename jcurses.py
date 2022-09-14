@@ -61,6 +61,7 @@ class jcurses:
             n = runtime.serial_bytes_available
             if n > 0:
                 ret = stdin.read(n)
+                stdout.write("\n")
                 break
         del n
         return ret
