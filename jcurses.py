@@ -187,8 +187,17 @@ class jcurses:
 
                 for i in range(3):
                     self.get_hw(i)
-                while not strr.endswith("R"):  # this is an actual loop
-                    strr += self.get_hw(3)
+                try:
+                    while not strr.endswith("R"):  # this is an actual loop
+                        strr += self.get_hw(3)
+                except KeyboardInterrupt:
+                    # uh oh, user is late
+                    strr = ""
+                    for i in range(3):
+                        self.get_hw(i)
+                    while not strr.endswith("R"):
+                        strr += self.get_hw(3)
+
                 strr = strr[2:-1]  # this is critical as find will break with <esc>.
                 res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
                 # Let's also update the move bookmarks.
@@ -216,8 +225,16 @@ class jcurses:
                 self.rem_gib()
 
                 self.get_hw(1)  # we need cleared stdin for this
-                while not strr.endswith("R"):
-                    strr += self.get_hw(3)
+                try:
+                    while not strr.endswith("R"):
+                        strr += self.get_hw(3)
+                except KeyboardInterrupt:
+                    # uh oh, user is late
+                    strr = ""
+                    self.get_hw(1)
+                    while not strr.endswith("R"):
+                        strr += self.get_hw(3)
+
                 strr = strr[2:-1]  # this is critical as find will break with <esc>.
                 res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
                 del strr
