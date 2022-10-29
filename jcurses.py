@@ -87,6 +87,7 @@ class jcurses:
                         f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D"
                     )  # frontend
                     del insertion_pos
+            del i
 
     def home(self):
         """
@@ -133,6 +134,7 @@ class jcurses:
                     self.spacerem += 1
                     self.focus -= 1
                     del insertion_pos
+            del i
 
     def clear(self):
         """
@@ -185,8 +187,15 @@ class jcurses:
                 # clearing stdin in case of fast pasting
                 self.rem_gib()
 
+                tries = 0
+                while True:
+                    if tries % 20:
+                        print(
+                            "Reading terminal size.\nIf you are seeing this message, press Ctrl+C"
+                        )
                 for i in range(3):
                     self.get_hw(i)
+                    del i
                 try:
                     while not strr.endswith("R"):  # this is an actual loop
                         strr += self.get_hw(3)
@@ -195,6 +204,7 @@ class jcurses:
                     strr = ""
                     for i in range(3):
                         self.get_hw(i)
+                        del i
                     while not strr.endswith("R"):
                         strr += self.get_hw(3)
 
@@ -299,6 +309,7 @@ class jcurses:
                         print(ord(s))
                 else:
                     stdout.write(str(self.register_char()))
+            del i
         stdout.write("\n")
 
     def register_char(self):
@@ -356,6 +367,8 @@ class jcurses:
 
                     except KeyError:
                         self.text_stepping = 0
+
+                    del s
         except KeyboardInterrupt:
             d = True
             while d:
@@ -442,11 +455,13 @@ class jcurses:
                             # frontend insertion
                             for d in self.buf[1][insertion_pos:]:
                                 stdout.write(d)
+                                del d
 
                             steps_in = len(self.buf[1][insertion_pos:])
 
                             for e in range(steps_in - 1):
                                 stdout.write("\010")
+                                del e
 
                             del steps_in, insertion_pos
             except KeyboardInterrupt:
