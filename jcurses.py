@@ -195,7 +195,6 @@ class jcurses:
                         )
                 for i in range(3):
                     self.get_hw(i)
-                    del i
                 try:
                     while not strr.endswith("R"):  # this is an actual loop
                         strr += self.get_hw(3)
@@ -204,7 +203,6 @@ class jcurses:
                     strr = ""
                     for i in range(3):
                         self.get_hw(i)
-                        del i
                     while not strr.endswith("R"):
                         strr += self.get_hw(3)
 
