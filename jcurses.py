@@ -2,12 +2,31 @@ from sys import stdout, stdin
 from supervisor import runtime
 from jcurses_data import char_map
 from time import sleep
+from gc import collect
 
 ESCK = "\033["
 
 
 class jcurses:
     def __init__(self):
+        self.enabled = False  # Jcurses has init'ed
+        self.softquit = False  # Internal bool to signal exiting
+        self.reset = False  # Set to true to hard reset jcurses
+
+        # Handy variable to make multi-action keys easily parsable
+        self.text_stepping = 0
+        self.ctx_dict = {
+            "top_left": [1, 1],
+            "bottom_left": [255, 255],
+            "line_len": 255,
+        }
+
+        self.stdin = None  # Virtual stdin, has priority over the real one
+        self.stdout = (
+            None  # Virtual stdout, can be flushed to the real one, or returned
+        )
+        self.hold_stdout = False  # Do not automatically flush the virtual stdout
+
         """
         trigger_dict : What to do when what key along with other intructions.
 
@@ -19,22 +38,41 @@ class jcurses:
                 Valid values: "all" / "lettersnumbers" / "numbers" / "letters" / "common".
             "echo": Can be "all" / "common" / "none".
         """
-        self.enabled = False  # jcurses has init'ed
-        self.softquit = False  # internal bool to signal exiting
-        self.reset = False  # set to true to hard reset jcurses
-        # handy variable to make multi-action keys easily parsable
-        self.text_stepping = 0
-        self.ctx_dict = {
-            "top_left": [1, 1],
-            "bottom_left": [255, 255],
-            "line_len": 255,
-        }
         self.trigger_dict = None
-        self.dmtex_suppress = False
+
+        self.dmtex_suppress = (
+            False  # an indicator that you should stop interfering with the terminal
+        )
         self.buf = [0, ""]
         self.focus = 0
-        self.stdin = None  # a register for when we need to clear stdin
         self.spacerem = -1
+
+    def write(strr):
+        if self.stdout is None:
+            self.stdout = ""
+        self.stdout += strr
+        del strr
+
+        if not self.hold_stdout:
+            fetch_writes(True)
+
+    def flush_writes(to_stdout=True):
+        if self.stdout is not None:
+            data = None
+            if to_stdout:
+                stdout.write(self.stdout)
+            else:
+                data = self.stdout
+            self.stdout = None
+            if to_stdout:
+                del data
+                collect()
+                return None
+            else:
+                collect()
+                return data
+        else:
+            return None
 
     def update_rem(self):
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
@@ -45,6 +83,7 @@ class jcurses:
         if n > 0:
             void = stdin.read(n)
             del void
+        collect()
 
     def anykey(self, msg=None):
         """
@@ -64,6 +103,7 @@ class jcurses:
                 stdout.write("\n")
                 break
         del n
+        collect()
         return ret
 
     def backspace(self, n=1):
@@ -87,6 +127,7 @@ class jcurses:
                         f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D"
                     )  # frontend
                     del insertion_pos
+        collect()
 
     def home(self):
         """
@@ -98,6 +139,7 @@ class jcurses:
             self.focus = lb
         stdout.write("\010" * df)
         del lb, df
+        collect()
 
     def end(self):
         """
@@ -105,6 +147,7 @@ class jcurses:
         """
         stdout.write(f"{ESCK}1C" * self.focus)
         self.focus = 0
+        collect()
 
     def overflow_check(self):
         if self.spacerem is -1:
@@ -133,6 +176,7 @@ class jcurses:
                     self.spacerem += 1
                     self.focus -= 1
                     del insertion_pos
+        collect()
 
     def clear(self):
         """
@@ -156,7 +200,6 @@ class jcurses:
             self.stop()
         self.enabled = True
         self.dmtex_suppress = True
-        # self.clear()
 
     def stop(self):
         """
@@ -209,6 +252,7 @@ class jcurses:
             except ValueError:
                 pass
         del d
+        collect()
         return res
 
     def detect_pos(self):
@@ -242,6 +286,7 @@ class jcurses:
             except ValueError:
                 pass
         del d
+        collect()
         return res
 
     def rem_gib(self):
@@ -269,6 +314,7 @@ class jcurses:
             else:
                 d = False
         del n, d, got
+        collect()
 
     def get_hw(self, act):
         """
@@ -453,6 +499,7 @@ class jcurses:
                 pass
             del tempstack
         del segmented
+        collect()
         return self.buf
 
     def termline(self):
@@ -488,6 +535,7 @@ class jcurses:
                     stdout.write(f"{ESCK}{-thectx[1]}D")
 
             del thectx
+        collect()
 
     def ctx_reg(self, namee):
         self.ctx_dict[namee] = self.detect_pos()
