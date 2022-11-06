@@ -47,16 +47,16 @@ class jcurses:
         self.focus = 0
         self.spacerem = -1
 
-    def write(strr):
+    def write(self, strr, end="\n"):
         if self.stdout is None:
             self.stdout = ""
-        self.stdout += strr
-        del strr
+        self.stdout += strr + end
+        del strr, end
 
         if not self.hold_stdout:
             fetch_writes(True)
 
-    def flush_writes(to_stdout=True):
+    def flush_writes(self, to_stdout=True):
         if self.stdout is not None:
             data = None
             if to_stdout:
