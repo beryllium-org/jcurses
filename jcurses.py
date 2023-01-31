@@ -413,6 +413,9 @@ class jcurses:
             tempstack = self.register_char()
             if tempstack:
                 tempstack.reverse()
+            elif not runtime.serial_connected:
+                self.buf[0] = self.trigger_dict["idle"]
+                self.softquit = True
             try:
                 while tempstack and not self.softquit:
                     i = tempstack.pop()
