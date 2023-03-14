@@ -97,7 +97,7 @@ char_map = {  # you need to add 0x
     42: "*",
     40: "(",
     41: ")",
-    365: "up",  # hacky fix to namechake with capital ABCD
+    365: "up",  # hacky fix to nameshake with capital ABCD
     366: "down",
     367: "right",
     368: "left",
