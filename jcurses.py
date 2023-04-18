@@ -1,5 +1,3 @@
-from sys import stdout, stdin
-from supervisor import runtime
 from jcurses_data import char_map
 from time import sleep
 
@@ -20,11 +18,16 @@ class jcurses:
             "line_len": 255,
         }
 
-        self.stdin = None  # Virtual stdin, has priority over the real one
-        self.stdout = (
-            None  # Virtual stdout, can be flushed to the real one, or returned
-        )
-        self.hold_stdout = False  # Do not automatically flush the virtual stdout
+        # Data streams to use, configure from main application
+        self.stdin = None
+        self.stdin_in = None
+        self.stdout = None
+        self.connected = None
+
+        # Temporary buffers that have higher priority over the real deal.
+        self.stdin_buf = None
+        self.stdout_buf = None  # Can be flushed to the real one, or returned
+        self.hold_stdout = False  # Do not flush stdout_buf
 
         """
         trigger_dict : What to do when what key along with other intructions.
@@ -47,22 +50,22 @@ class jcurses:
         self.spacerem = -1
 
     def write(self, strr=None, end="\n"):
-        if self.stdout is None:
-            self.stdout = ""
-        self.stdout += (strr if strr is not None else "") + end
+        if self.stdout_buf is None:
+            self.stdout_buf = ""
+        self.stdout_buf += (strr if strr is not None else "") + end
         del strr, end
 
         if not self.hold_stdout:
             self.flush_writes()
 
     def flush_writes(self, to_stdout=True):
-        if self.stdout is not None:
+        if self.stdout_buf is not None:
             data = None
             if to_stdout:
-                stdout.write(self.stdout)
+                stdout.write(self.stdout_buf)
             else:
-                data = self.stdout
-            self.stdout = None
+                data = self.stdout_buf
+            self.stdout_buf = None
             if to_stdout:
                 del data
                 return None
@@ -75,8 +78,8 @@ class jcurses:
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
     def clear_buffer(self):
-        self.stdin = None
-        n = runtime.serial_bytes_available
+        self.stdin_buf = None
+        n = self.stdin_in
         if n > 0:
             void = stdin.read(n)
             del void
@@ -93,7 +96,7 @@ class jcurses:
         del msg
         while True:
             sleep(0.5)
-            n = runtime.serial_bytes_available
+            n = self.stdin_in
             if n > 0:
                 ret = stdin.read(n)
                 stdout.write("\n")
@@ -287,13 +290,13 @@ class jcurses:
         got = False  # we got at least a few
 
         while d:
-            n = runtime.serial_bytes_available
+            n = self.stdin_in
             if n > 0:
                 got = True
-                if self.stdin is None:
-                    self.stdin = stdin.read(n)
+                if self.stdin_buf is None:
+                    self.stdin_buf = stdin.read(n)
                 else:
-                    self.stdin += stdin.read(n)
+                    self.stdin_buf += stdin.read(n)
                 if got:
                     sleep(0.0003)
                     """
@@ -322,10 +325,9 @@ class jcurses:
             return stdin.read(1)
 
     def training(self, opt=False):
-
         sleep(3)
         for i in range(0, 10):
-            n = runtime.serial_bytes_available
+            n = self.stdin_in
             if n > 0:
                 if not opt:
                     i = stdin.read(n)
@@ -348,12 +350,12 @@ class jcurses:
         """
         stack = []
         try:
-            n = runtime.serial_bytes_available
-            if n > 0 or self.stdin is not None:
+            n = self.stdin_in
+            if n > 0 or self.stdin_buf is not None:
                 i = None
-                if self.stdin is not None:
-                    i = self.stdin
-                    self.stdin = None
+                if self.stdin_buf is not None:
+                    i = self.stdin_buf
+                    self.stdin_buf = None
                 else:
                     i = stdin.read(n)
 
@@ -413,7 +415,7 @@ class jcurses:
             tempstack = self.register_char()
             if tempstack:
                 tempstack.reverse()
-            elif not runtime.serial_connected:
+            elif not self.connected:
                 self.buf[0] = self.trigger_dict["idle"]
                 self.softquit = True
             try:
@@ -453,12 +455,12 @@ class jcurses:
                                     self.spacerem -= len(i)
                                     self.buf[1] += i
                                 else:
-                                    if self.stdin is None:
-                                        self.stdin = i
+                                    if self.stdin_buf is None:
+                                        self.stdin_buf = i
                                     else:
-                                        self.stdin += i
+                                        self.stdin_buf += i
                                     while tempstack:
-                                        self.stdin += tempstack.pop()
+                                        self.stdin_buf += tempstack.pop()
                                     self.softquit = True
                                     try:
                                         self.buf[0] = self.trigger_dict["overflow"]
