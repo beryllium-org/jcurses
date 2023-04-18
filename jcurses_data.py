@@ -118,4 +118,5 @@ char_map = {  # you need to add 0x
     5: "ctrlE",
     18: "ctrlR",
     12: "ctrlL",
+    3: "ctrlC",
 }
