@@ -107,7 +107,7 @@ class jcurses:
             n = self.console.in_waiting
             if n > 0:
                 ret = self.console.read(n)
-                self.console.write("\n")
+                self.console.write(b"\n\r")
                 break
         del n
         return ret
@@ -349,7 +349,7 @@ class jcurses:
                         print(ord(s))
                 else:
                     self.console.write(bytes(str(self.register_char()), CONV))
-        self.console.write(b"\n")
+        self.console.write(b"\n\r")
 
     def register_char(self):
         """
