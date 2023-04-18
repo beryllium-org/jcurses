@@ -3,6 +3,7 @@ from jcurses_data import char_map
 from time import sleep
 
 ESCK = "\033["
+CONV = "utf-8"
 
 
 class jcurses:
@@ -60,7 +61,7 @@ class jcurses:
         if self.stdout_buf is not None:
             data = None
             if to_stdout:
-                stdout.write(bytes(self.stdout_buf, "utf-8"))
+                self.console.write(bytes(self.stdout_buf, CONV))
             else:
                 data = self.stdout_buf
             self.stdout_buf = None
@@ -90,14 +91,14 @@ class jcurses:
         ret = None
         n = None
         if msg is not None:
-            stdout.write(msg)
+            self.console.write(bytes(msg, CONV))
         del msg
         while True:
             sleep(0.5)
             n = self.console.in_waiting
             if n > 0:
                 ret = self.console.read(n)
-                stdout.write("\n")
+                self.console.write("\n")
                 break
         del n
         return ret
@@ -110,17 +111,20 @@ class jcurses:
             if len(self.buf[1]) - self.focus > 0:
                 if self.focus == 0:
                     self.buf[1] = self.buf[1][:-1]
-                    stdout.write("\010 \010")
+                    self.console.write(b"\010 \010")
                     self.spacerem += 1
                 else:
                     self.spacerem += 1
-                    stdout.write("\010")
+                    self.console.write(b"\010")
                     insertion_pos = len(self.buf[1]) - self.focus - 1
                     self.buf[
                         1
                     ] = f"{self.buf[1][:insertion_pos]}{self.buf[1][insertion_pos + 1 :]}"  # backend
-                    stdout.write(
-                        f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D"
+                    self.console.write(
+                        bytes(
+                            f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
+                            CONV,
+                        )
                     )  # frontend
                     del insertion_pos
 
@@ -132,14 +136,14 @@ class jcurses:
         df = lb - self.focus
         if df > 0:
             self.focus = lb
-        stdout.write("\010" * df)
+        self.console.write(b"\010" * df)
         del lb, df
 
     def end(self):
         """
         Go to end of buf
         """
-        stdout.write(f"{ESCK}1C" * self.focus)
+        self.console.write(bytes(f"{ESCK}1C" * self.focus, CONV))
         self.focus = 0
 
     def overflow_check(self):
@@ -155,7 +159,9 @@ class jcurses:
             if len(self.buf[1]) > 0 and self.focus > 0:
                 if self.focus == len(self.buf[1]):
                     self.buf[1] = self.buf[1][1:]
-                    stdout.write(f"{self.buf[1]} " + "\010" * self.focus)
+                    self.console.write(
+                        bytes(f"{self.buf[1]} " + "\010" * self.focus, CONV)
+                    )
                     self.spacerem += 1
                     self.focus -= 1
                 else:
@@ -163,8 +169,11 @@ class jcurses:
                     self.buf[
                         1
                     ] = f"{self.buf[1][:insertion_pos]}{self.buf[1][insertion_pos + 1 :]}"  # backend
-                    stdout.write(
-                        f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D"
+                    self.console.write(
+                        bytes(
+                            f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
+                            CONV,
+                        )
                     )  # frontend
                     self.spacerem += 1
                     self.focus -= 1
@@ -174,15 +183,13 @@ class jcurses:
         """
         Clear the whole screen & goto top
         """
-        stdout.write(f"{ESCK}2J")
-        stdout.write(f"{ESCK}H")
+        self.console.write(bytes(f"{ESCK}2J{ESCK}H", CONV))
 
     def clear_line(self):
         """
         Clear the current line
         """
-        stdout.write(f"{ESCK}2K")
-        stdout.write(f"{ESCK}500D")
+        self.console.write(bytes(f"{ESCK}2K{ESCK}500D", CONV))
 
     def start(self):
         """
@@ -311,13 +318,13 @@ class jcurses:
         """
         if act is 0:
             # save pos & goto the end
-            stdout.write(f"{ESCK}s{ESCK}500B{ESCK}500C")
+            self.console.write(bytes(f"{ESCK}s{ESCK}500B{ESCK}500C", CONV))
         elif act is 1:
             # ask position
-            stdout.write(f"{ESCK}6n")
+            self.console.write(bytes(f"{ESCK}6n", CONV))
         elif act is 2:
             # go back to original position
-            stdout.write(f"{ESCK}u")
+            self.console.write(bytes(f"{ESCK}u", CONV))
         elif act is 3:
             # get it
             return self.console.read(1)
@@ -332,8 +339,8 @@ class jcurses:
                     for s in i:
                         print(ord(s))
                 else:
-                    stdout.write(str(self.register_char()))
-        stdout.write("\n")
+                    self.console.write(bytes(str(self.register_char()), CONV))
+        self.console.write(b"\n")
 
     def register_char(self):
         """
@@ -436,11 +443,11 @@ class jcurses:
                         pass
                     elif i == "left":
                         if len(self.buf[1]) > self.focus:
-                            stdout.write("\010")
+                            self.console.write(b"\010")
                             self.focus += 1
                     elif i == "right":
                         if self.focus > 0:
-                            stdout.write(ESCK + "1C")
+                            self.console.write(bytes(f"{ESCK}1C", CONV))
                             self.focus -= 1
                     elif self.trigger_dict["rest"] == "stack" and (
                         self.trigger_dict["rest_a"] == "common"
@@ -449,7 +456,7 @@ class jcurses:
                         if self.focus is 0:
                             if self.trigger_dict["echo"] in {"common", "all"}:
                                 if not self.overflow_check():
-                                    stdout.write(i)
+                                    self.console.write(bytes(i, CONV))
                                     self.spacerem -= len(i)
                                     self.buf[1] += i
                                 else:
@@ -478,12 +485,12 @@ class jcurses:
 
                             # frontend insertion
                             for d in self.buf[1][insertion_pos:]:
-                                stdout.write(d)
+                                self.console.write(bytes(d, CONV))
 
                             steps_in = len(self.buf[1][insertion_pos:])
 
                             for e in range(steps_in - 1):
-                                stdout.write("\010")
+                                self.console.write(b"\010")
 
                             del steps_in, insertion_pos
             except KeyboardInterrupt:
@@ -493,9 +500,9 @@ class jcurses:
         return self.buf
 
     def termline(self):
-        stdout.write(self.trigger_dict["prefix"] + self.buf[1])
+        self.console.write(bytes(self.trigger_dict["prefix"] + self.buf[1], CONV))
         if self.focus > 0:
-            stdout.write(f"{ESCK}{self.focus}D")
+            self.console.write(bytes(f"{ESCK}{self.focus}D", CONV))
         self.update_rem()
 
     def move(self, ctx=None, x=0, y=0):
@@ -505,24 +512,24 @@ class jcurses:
         """
         if ctx is None:
             x, y = max(1, x), max(1, y)
-            stdout.write(f"{ESCK}{x};{y}H")
+            self.console.write(bytes(f"{ESCK}{x};{y}H", CONV))
         else:
             thectx = self.ctx_dict[ctx]
-            stdout.write(f"{ESCK}{thectx[0]};{thectx[1]}H")
+            self.console.write(bytes(f"{ESCK}{thectx[0]};{thectx[1]}H", CONV))
 
             # out of bounds check for up and down
             if x + thectx[0] > 0:
                 if thectx[0] > 0:
-                    stdout.write(f"{ESCK}{thectx[0]}B")
+                    self.console.write(bytes(f"{ESCK}{thectx[0]}B", CONV))
                 else:
-                    stdout.write(f"{ESCK}{-thectx[0]}A")
+                    self.console.write(bytes(f"{ESCK}{-thectx[0]}A", CONV))
 
             # out of bounds check for right and left
             if y + thectx[1] > 0:
                 if thectx[1] > 0:
-                    stdout.write(f"{ESCK}{thectx[1]}C")
+                    self.console.write(bytes(f"{ESCK}{thectx[1]}C", CONV))
                 else:  # left
-                    stdout.write(f"{ESCK}{-thectx[1]}D")
+                    self.console.write(bytes(f"{ESCK}{-thectx[1]}D", CONV))
 
             del thectx
 
@@ -531,4 +538,4 @@ class jcurses:
 
     def line(self, charr):
         self.clear_line()
-        stdout.write(charr * self.detect_size()[1])
+        self.console.write(bytes(charr * self.detect_size()[1], CONV))
