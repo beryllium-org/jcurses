@@ -61,7 +61,7 @@ class jcurses:
         if self.stdout_buf is not None:
             data = None
             if to_stdout:
-                self.console.write(bytes(self.stdout_buf, CONV))
+                self.console.write(bytes(self.stdout_buf.replace("\n", "\n\r"), CONV))
             else:
                 data = self.stdout_buf
             self.stdout_buf = None
