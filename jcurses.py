@@ -336,7 +336,7 @@ class jcurses:
             self.console.write(bytes(f"{ESCK}u", CONV))
         elif act is 3:
             # get it
-            return self.console.read(1)
+            return str(self.console.read(1), CONV)
 
     def training(self, opt=False):
         sleep(3)
@@ -346,7 +346,7 @@ class jcurses:
                 if not opt:
                     i = self.console.read(n)
                     for s in i:
-                        print(ord(s))
+                        print(str(s))
                 else:
                     self.console.write(bytes(str(self.register_char()), CONV))
         self.console.write(b"\n\r")
@@ -373,9 +373,8 @@ class jcurses:
                 else:
                     i = self.console.read(n)
 
-                for s in i:
+                for charr in i:
                     try:
-                        charr = ord(s)
                         # Check for alt or process
                         if self.text_stepping is 0:
                             if charr != 27:
