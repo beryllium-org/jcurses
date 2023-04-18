@@ -1,3 +1,4 @@
+from supervisor import runtime
 from jcurses_data import char_map
 from time import sleep
 
@@ -18,11 +19,8 @@ class jcurses:
             "line_len": 255,
         }
 
-        # Data streams to use, configure from main application
-        self.stdin = None
-        self.stdin_in = None
-        self.stdout = None
-        self.connected = None
+        # Data stream to use, configure from main application
+        self.console = None
 
         # Temporary buffers that have higher priority over the real deal.
         self.stdin_buf = None
@@ -62,7 +60,7 @@ class jcurses:
         if self.stdout_buf is not None:
             data = None
             if to_stdout:
-                stdout.write(self.stdout_buf)
+                stdout.write(bytes(self.stdout_buf, "utf-8"))
             else:
                 data = self.stdout_buf
             self.stdout_buf = None
@@ -79,9 +77,9 @@ class jcurses:
 
     def clear_buffer(self):
         self.stdin_buf = None
-        n = self.stdin_in
+        n = self.console.in_waiting
         if n > 0:
-            void = stdin.read(n)
+            void = self.console.read(n)
             del void
 
     def anykey(self, msg=None):
@@ -96,9 +94,9 @@ class jcurses:
         del msg
         while True:
             sleep(0.5)
-            n = self.stdin_in
+            n = self.console.in_waiting
             if n > 0:
-                ret = stdin.read(n)
+                ret = self.console.read(n)
                 stdout.write("\n")
                 break
         del n
@@ -290,13 +288,13 @@ class jcurses:
         got = False  # we got at least a few
 
         while d:
-            n = self.stdin_in
+            n = self.console.in_waiting
             if n > 0:
                 got = True
                 if self.stdin_buf is None:
-                    self.stdin_buf = stdin.read(n)
+                    self.stdin_buf = self.console.read(n)
                 else:
-                    self.stdin_buf += stdin.read(n)
+                    self.stdin_buf += self.console.read(n)
                 if got:
                     sleep(0.0003)
                     """
@@ -322,15 +320,15 @@ class jcurses:
             stdout.write(f"{ESCK}u")
         elif act is 3:
             # get it
-            return stdin.read(1)
+            return self.console.read(1)
 
     def training(self, opt=False):
         sleep(3)
         for i in range(0, 10):
-            n = self.stdin_in
+            n = self.console.in_waiting
             if n > 0:
                 if not opt:
-                    i = stdin.read(n)
+                    i = self.console.read(n)
                     for s in i:
                         print(ord(s))
                 else:
@@ -350,14 +348,14 @@ class jcurses:
         """
         stack = []
         try:
-            n = self.stdin_in
+            n = self.console.in_waiting
             if n > 0 or self.stdin_buf is not None:
                 i = None
                 if self.stdin_buf is not None:
                     i = self.stdin_buf
                     self.stdin_buf = None
                 else:
-                    i = stdin.read(n)
+                    i = self.console.read(n)
 
                 for s in i:
                     try:
@@ -415,7 +413,7 @@ class jcurses:
             tempstack = self.register_char()
             if tempstack:
                 tempstack.reverse()
-            elif not self.connected:
+            elif not runtime.serial_connected:
                 self.buf[0] = self.trigger_dict["idle"]
                 self.softquit = True
             try:
