@@ -57,6 +57,15 @@ class jcurses:
         if not self.hold_stdout:
             self.flush_writes()
 
+    def nwrite(self, strr=None):
+        if self.stdout_buf is None:
+            self.stdout_buf = ""
+        self.stdout_buf += strr if strr is not None else ""
+        del strr
+
+        if not self.hold_stdout:
+            self.flush_writes()
+
     def flush_writes(self, to_stdout=True):
         if self.stdout_buf is not None:
             data = None
