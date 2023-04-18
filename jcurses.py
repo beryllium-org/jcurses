@@ -87,10 +87,10 @@ class jcurses:
 
     def clear_buffer(self):
         self.stdin_buf = None
-        n = self.console.in_waiting
-        if n > 0:
-            void = self.console.read(n)
-            del void
+        if self.console.in_waiting:
+            self.console.reset_input_buffer()
+        if self.console.out_waiting:
+            self.console.reset_output_buffer()
 
     def anykey(self, msg=None):
         """
