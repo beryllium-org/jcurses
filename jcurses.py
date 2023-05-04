@@ -1,4 +1,3 @@
-from supervisor import runtime
 from jcurses_data import char_map
 from time import sleep
 
@@ -11,6 +10,7 @@ class jcurses:
         self.enabled = False  # Jcurses has init'ed
         self.softquit = False  # Internal bool to signal exiting
         self.reset = False  # Set to true to hard reset jcurses
+        self._active = None # A check if .connected exists
 
         # Handy variable to make multi-action keys easily parsable
         self.text_stepping = 0
@@ -47,6 +47,9 @@ class jcurses:
         self.buf = [0, ""]
         self.focus = 0
         self.spacerem = -1
+
+    def check_activity(self):
+        self._active = hasattr(self.console, "connected")
 
     def write(self, strr=None, end="\n"):
         if self.stdout_buf is None:
@@ -421,6 +424,7 @@ class jcurses:
         The main program.
         Depends on variables being already set.
         """
+        self.check_activity()
         self.softquit = segmented = False
         self.buf[0] = 0
         self.termline()
@@ -428,7 +432,7 @@ class jcurses:
             tempstack = self.register_char()
             if tempstack:
                 tempstack.reverse()
-            elif not runtime.serial_connected:
+            elif self._active and not self.console.connected:
                 self.buf[0] = self.trigger_dict["idle"]
                 self.softquit = True
             try:
