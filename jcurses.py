@@ -108,7 +108,7 @@ class jcurses:
         while True:
             sleep(0.5)
             n = self.console.in_waiting
-            if n > 0:
+            if n:
                 ret = self.console.read(n)
                 self.console.write(b"\n\r")
                 break
@@ -121,7 +121,7 @@ class jcurses:
         """
         for i in range(n):
             if len(self.buf[1]) - self.focus > 0:
-                if self.focus == 0:
+                if not self.focus:
                     self.buf[1] = self.buf[1][:-1]
                     self.console.write(b"\010 \010")
                     self.spacerem += 1
@@ -168,7 +168,7 @@ class jcurses:
         Key delete. Like, yea, the del you have on your keyboard under insert
         """
         for i in range(n):
-            if len(self.buf[1]) > 0 and self.focus > 0:
+            if len(self.buf[1]) > 0 and self.focus:
                 if self.focus == len(self.buf[1]):
                     self.buf[1] = self.buf[1][1:]
                     self.console.write(
@@ -308,7 +308,7 @@ class jcurses:
 
         while d:
             n = self.console.in_waiting
-            if n > 0:
+            if n:
                 got = True
                 if self.stdin_buf is None:
                     self.stdin_buf = self.console.read(n)
@@ -345,7 +345,7 @@ class jcurses:
         sleep(3)
         for i in range(0, 10):
             n = self.console.in_waiting
-            if n > 0:
+            if n:
                 if not opt:
                     i = self.console.read(n)
                     for s in i:
@@ -368,7 +368,7 @@ class jcurses:
         stack = []
         try:
             n = self.console.in_waiting
-            if n > 0 or self.stdin_buf is not None:
+            if n or self.stdin_buf is not None:
                 i = None
                 if self.stdin_buf is not None:
                     i = self.stdin_buf
@@ -458,7 +458,7 @@ class jcurses:
                             self.console.write(b"\010")
                             self.focus += 1
                     elif i == "right":
-                        if self.focus > 0:
+                        if self.focus:
                             self.console.write(bytes(f"{ESCK}1C", CONV))
                             self.focus -= 1
                     elif self.trigger_dict["rest"] == "stack" and (
@@ -513,7 +513,7 @@ class jcurses:
 
     def termline(self):
         self.console.write(bytes(self.trigger_dict["prefix"] + self.buf[1], CONV))
-        if self.focus > 0:
+        if self.focus:
             self.console.write(bytes(f"{ESCK}{self.focus}D", CONV))
         self.update_rem()
 
