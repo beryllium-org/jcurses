@@ -10,7 +10,7 @@ class jcurses:
         self.enabled = False  # Jcurses has init'ed
         self.softquit = False  # Internal bool to signal exiting
         self.reset = False  # Set to true to hard reset jcurses
-        self._active = None # A check if .connected exists
+        self._active = None  # A check if .connected exists
 
         # Handy variable to make multi-action keys easily parsable
         self.text_stepping = 0
@@ -48,10 +48,10 @@ class jcurses:
         self.focus = 0
         self.spacerem = -1
 
-    def check_activity(self):
+    def check_activity(self) -> None:
         self._active = hasattr(self.console, "connected")
 
-    def write(self, strr=None, end="\n"):
+    def write(self, strr=None, end="\n") -> None:
         if self.stdout_buf is None:
             self.stdout_buf = ""
         self.stdout_buf += (strr if strr is not None else "") + end
@@ -60,7 +60,7 @@ class jcurses:
         if not self.hold_stdout:
             self.flush_writes()
 
-    def nwrite(self, strr=None):
+    def nwrite(self, strr=None) -> None:
         if self.stdout_buf is None:
             self.stdout_buf = ""
         self.stdout_buf += strr if strr is not None else ""
@@ -69,7 +69,7 @@ class jcurses:
         if not self.hold_stdout:
             self.flush_writes()
 
-    def flush_writes(self, to_stdout=True):
+    def flush_writes(self, to_stdout=True) -> None:
         if self.stdout_buf is not None:
             data = None
             if to_stdout:
@@ -85,10 +85,10 @@ class jcurses:
         else:
             return None
 
-    def update_rem(self):
+    def update_rem(self) -> None:
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
-    def clear_buffer(self):
+    def clear_buffer(self) -> None:
         self.stdin_buf = None
         if self.console.in_waiting:
             self.console.reset_input_buffer()
@@ -115,7 +115,7 @@ class jcurses:
         del n
         return ret
 
-    def backspace(self, n=1):
+    def backspace(self, n=1) -> None:
         """
         Arguably most used key
         """
@@ -140,7 +140,7 @@ class jcurses:
                     )  # frontend
                     del insertion_pos
 
-    def home(self):
+    def home(self) -> None:
         """
         Go to start of buf
         """
@@ -151,19 +151,19 @@ class jcurses:
         self.console.write(b"\010" * df)
         del lb, df
 
-    def end(self):
+    def end(self) -> None:
         """
         Go to end of buf
         """
         self.console.write(bytes(f"{ESCK}1C" * self.focus, CONV))
         self.focus = 0
 
-    def overflow_check(self):
+    def overflow_check(self) -> bool:
         if self.spacerem is -1:
             self.update_rem()
         return False if self.spacerem > 0 else True
 
-    def delete(self, n=1):
+    def delete(self, n=1) -> None:
         """
         Key delete. Like, yea, the del you have on your keyboard under insert
         """
@@ -191,19 +191,19 @@ class jcurses:
                     self.focus -= 1
                     del insertion_pos
 
-    def clear(self):
+    def clear(self) -> None:
         """
         Clear the whole screen & goto top
         """
         self.console.write(bytes(f"{ESCK}2J{ESCK}H", CONV))
 
-    def clear_line(self):
+    def clear_line(self) -> None:
         """
         Clear the current line
         """
         self.console.write(bytes(f"{ESCK}2K{ESCK}500D", CONV))
 
-    def start(self):
+    def start(self) -> None:
         """
         Start the Jcurses system.
         """
@@ -212,7 +212,7 @@ class jcurses:
         self.enabled = True
         self.dmtex_suppress = True
 
-    def stop(self):
+    def stop(self) -> None:
         """
         Stop the Jcurses system & reset to the default state.
         """
@@ -226,7 +226,7 @@ class jcurses:
         self.trigger_dict = None
         self.dmtex_suppress = False
 
-    def detect_size(self):
+    def detect_size(self) -> list:
         """
         detect terminal size, returns [rows, collumns]
         """
@@ -265,7 +265,7 @@ class jcurses:
         del d
         return res
 
-    def detect_pos(self):
+    def detect_pos(self) -> list:
         """
         detect cursor position, returns [rows, collumns]
         """
@@ -298,7 +298,7 @@ class jcurses:
         del d
         return res
 
-    def rem_gib(self):
+    def rem_gib(self) -> None:
         """
         remove gibberrish from stdin when we need to read ansi escape codes
         """
@@ -341,7 +341,7 @@ class jcurses:
             # get it
             return str(self.console.read(1), CONV)
 
-    def training(self, opt=False):
+    def training(self, opt=False) -> None:
         sleep(3)
         for i in range(0, 10):
             n = self.console.in_waiting
@@ -354,7 +354,7 @@ class jcurses:
                     self.console.write(bytes(str(self.register_char()), CONV))
         self.console.write(b"\n\r")
 
-    def register_char(self):
+    def register_char(self) -> list:
         """
         Complete all-in-one input character registration function.
         Returns list of input.
@@ -419,7 +419,7 @@ class jcurses:
             del d
         return stack
 
-    def program(self):
+    def program(self) -> list:
         """
         The main program.
         Depends on variables being already set.
@@ -511,13 +511,13 @@ class jcurses:
         del segmented
         return self.buf
 
-    def termline(self):
+    def termline(self) -> None:
         self.console.write(bytes(self.trigger_dict["prefix"] + self.buf[1], CONV))
         if self.focus:
             self.console.write(bytes(f"{ESCK}{self.focus}D", CONV))
         self.update_rem()
 
-    def move(self, ctx=None, x=0, y=0):
+    def move(self, ctx=None, x=0, y=0) -> None:
         """
         Move to a specified coordinate or a bookmark.
         If you specified a bookmark, you can use x & y to add an offset.
@@ -545,9 +545,9 @@ class jcurses:
 
             del thectx
 
-    def ctx_reg(self, namee):
+    def ctx_reg(self, namee) -> None:
         self.ctx_dict[namee] = self.detect_pos()
 
-    def line(self, charr):
+    def line(self, charr) -> None:
         self.clear_line()
         self.console.write(bytes(charr * self.detect_size()[1], CONV))
