@@ -85,6 +85,7 @@ char_map = {  # you need to add 0x
     27: "alt",
     32: " ",
     13: "enter",
+    10: "enter",
     9: "tab",
     126: "~",
     33: "!",
