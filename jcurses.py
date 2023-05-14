@@ -48,8 +48,9 @@ class jcurses:
         self.focus = 0
         self.spacerem = -1
 
-    def check_activity(self) -> None:
+    def check_activity(self) -> bool:
         self._active = hasattr(self.console, "connected")
+        return self._active
 
     def write(self, strr=None, end="\n") -> None:
         if self.stdout_buf is None:
@@ -92,7 +93,7 @@ class jcurses:
         self.stdin_buf = None
         if self.console.in_waiting:
             self.console.reset_input_buffer()
-        if self.console.out_waiting:
+        if hasattr(self.console, "out_waiting") and self.console.out_waiting:
             self.console.reset_output_buffer()
 
     def anykey(self, msg=None):
