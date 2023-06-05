@@ -410,14 +410,12 @@ class jcurses:
                     except KeyError:
                         self.text_stepping = 0
         except KeyboardInterrupt:
-            d = True
-            while d:
+            while True:
                 try:
                     stack = ["ctrlC"]
-                    d = False
+                    break
                 except KeyboardInterrupt:
                     pass
-            del d
         return stack
 
     def program_non_blocking(self):
