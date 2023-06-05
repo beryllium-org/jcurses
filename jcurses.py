@@ -196,7 +196,7 @@ class jcurses:
         """
         Clear the whole screen & goto top
         """
-        self.console.write(bytes(f"{ESCK}3J{ESCK}H", CONV))
+        self.console.write(bytes(f"{ESCK}2J{ESCK}3J{ESCK}H", CONV))
 
     def clear_line(self) -> None:
         """
