@@ -433,12 +433,12 @@ class jcurses:
         self.termline()
         while not self.softquit:
             tempstack = self.register_char()
-            if tempstack:
-                tempstack.reverse()
-            elif self._active and not self.console.connected:
-                self.buf[0] = self.trigger_dict["idle"]
-                self.softquit = True
             try:
+                if tempstack:
+                    tempstack.reverse()
+                elif self._active and not self.console.connected:
+                    self.buf[0] = self.trigger_dict["idle"]
+                    self.softquit = True
                 while tempstack and not self.softquit:
                     i = tempstack.pop()
                     if i == "alt" or segmented:
