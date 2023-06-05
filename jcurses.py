@@ -367,18 +367,16 @@ class jcurses:
         You need to loop this in a while true.
         """
         stack = []
-        try:
-            n = self.console.in_waiting
-            if n or self.stdin_buf is not None:
-                i = None
-                if self.stdin_buf is not None:
-                    i = self.stdin_buf
-                    self.stdin_buf = None
-                else:
-                    i = self.console.read(n)
-
-                for charr in i:
-                    try:
+        n = self.console.in_waiting
+        if n or self.stdin_buf is not None:
+            i = None
+            if self.stdin_buf is not None:
+                i = self.stdin_buf
+            else:
+                self.stdin_buf = self.console.read(n)
+                i = self.stdin_buf
+                try:
+                    for charr in i:
                         # Check for alt or process
                         if self.text_stepping is 0:
                             if charr != 27:
@@ -406,19 +404,17 @@ class jcurses:
                                 self.text_stepping = 1
                             else:  # other
                                 stack.append(char_map[charr])
-
-                    except KeyError:
-                        self.text_stepping = 0
-        except KeyboardInterrupt:
-            while True:
-                try:
-                    stack = ["ctrlC"]
-                    break
-                except KeyboardInterrupt:
-                    pass
+                except KeyError:
+                    self.text_stepping = 0
+            self.stdin_buf = None
         return stack
 
     def program_non_blocking(self):
+        """
+        The main program, but doesnt block.
+        None when no data.
+        Depends on variables being already set.
+        """
         if self.console.in_waiting:
             return self.program(nb=True)
 
@@ -431,87 +427,103 @@ class jcurses:
         self.softquit = segmented = False
         self.buf[0] = 0
         self.termline()
-        while not self.softquit:
-            tempstack = self.register_char()
+        while (
+            not self.softquit
+        ):  # Dear lord, forgive me for the crime I am about to commit.
             try:
-                if tempstack:
-                    tempstack.reverse()
-                elif self._active and not self.console.connected:
-                    self.buf[0] = self.trigger_dict["idle"]
-                    self.softquit = True
-                while tempstack and not self.softquit:
-                    i = tempstack.pop()
-                    if i == "alt" or segmented:
-                        pass
-                    elif i in self.trigger_dict:
-                        self.buf[0] = self.trigger_dict[i]
-                        self.softquit = True
-                    elif i == "bck":
-                        self.backspace()
-                    elif i == "del":
-                        self.delete()
-                    elif i == "home":
-                        self.home()
-                    elif i == "end":
-                        self.end()
-                    elif i in ["up", "ins", "down", "tab"]:
-                        pass
-                    elif i == "left":
-                        if len(self.buf[1]) > self.focus:
-                            self.console.write(b"\010")
-                            self.focus += 1
-                    elif i == "right":
-                        if self.focus:
-                            self.console.write(bytes(f"{ESCK}1C", CONV))
-                            self.focus -= 1
-                    elif self.trigger_dict["rest"] == "stack" and (
-                        self.trigger_dict["rest_a"] == "common"
-                        and not (i.startswith("ctrl") or i.startswith("alt"))
-                    ):  # Arknights "PatriotExtra" theme starts playing
-                        if self.focus is 0:
-                            if self.trigger_dict["echo"] in {"common", "all"}:
-                                if not self.overflow_check():
-                                    self.console.write(bytes(i, CONV))
-                                    self.spacerem -= len(i)
-                                    self.buf[1] += i
-                                else:
-                                    if self.stdin_buf is None:
-                                        self.stdin_buf = i
-                                    else:
-                                        self.stdin_buf += i
-                                    while tempstack:
-                                        self.stdin_buf += tempstack.pop()
+                while not self.softquit:
+                    try:
+                        while not self.softquit:
+                            tempstack = self.register_char()
+                            if tempstack:
+                                tempstack.reverse()
+                            elif self._active and not self.console.connected:
+                                self.buf[0] = self.trigger_dict["idle"]
+                                self.softquit = True
+                            while tempstack and not self.softquit:
+                                i = tempstack.pop()
+                                if i == "alt" or segmented:
+                                    pass
+                                elif i in self.trigger_dict:
+                                    self.buf[0] = self.trigger_dict[i]
                                     self.softquit = True
-                                    try:
-                                        self.buf[0] = self.trigger_dict["overflow"]
-                                    except KeyError:
-                                        self.buf[0] = 0
+                                elif i == "bck":
+                                    self.backspace()
+                                elif i == "del":
+                                    self.delete()
+                                elif i == "home":
+                                    self.home()
+                                elif i == "end":
+                                    self.end()
+                                elif i in ["up", "ins", "down", "tab"]:
+                                    pass
+                                elif i == "left":
+                                    if len(self.buf[1]) > self.focus:
+                                        self.console.write(b"\010")
+                                        self.focus += 1
+                                elif i == "right":
+                                    if self.focus:
+                                        self.console.write(bytes(f"{ESCK}1C", CONV))
+                                        self.focus -= 1
+                                elif self.trigger_dict["rest"] == "stack" and (
+                                    self.trigger_dict["rest_a"] == "common"
+                                    and not (
+                                        i.startswith("ctrl") or i.startswith("alt")
+                                    )
+                                ):  # Arknights "PatriotExtra" theme starts playing
+                                    if self.focus is 0:
+                                        if self.trigger_dict["echo"] in {
+                                            "common",
+                                            "all",
+                                        }:
+                                            if not self.overflow_check():
+                                                self.console.write(bytes(i, CONV))
+                                                self.spacerem -= len(i)
+                                                self.buf[1] += i
+                                            else:
+                                                if self.stdin_buf is None:
+                                                    self.stdin_buf = i
+                                                else:
+                                                    self.stdin_buf += i
+                                                while tempstack:
+                                                    self.stdin_buf += tempstack.pop()
+                                                self.softquit = True
+                                                try:
+                                                    self.buf[0] = self.trigger_dict[
+                                                        "overflow"
+                                                    ]
+                                                except KeyError:
+                                                    self.buf[0] = 0
 
-                            else:
-                                self.buf[1] += i
-                        else:
-                            insertion_pos = len(self.buf[1]) - self.focus
+                                        else:
+                                            self.buf[1] += i
+                                    else:
+                                        insertion_pos = len(self.buf[1]) - self.focus
 
-                            self.buf[1] = (
-                                self.buf[1][:insertion_pos]
-                                + i
-                                + self.buf[1][insertion_pos:]
-                            )
+                                        self.buf[1] = (
+                                            self.buf[1][:insertion_pos]
+                                            + i
+                                            + self.buf[1][insertion_pos:]
+                                        )
 
-                            # frontend insertion
-                            for d in self.buf[1][insertion_pos:]:
-                                self.console.write(bytes(d, CONV))
+                                        # frontend insertion
+                                        for d in self.buf[1][insertion_pos:]:
+                                            self.console.write(bytes(d, CONV))
 
-                            steps_in = len(self.buf[1][insertion_pos:])
+                                        steps_in = len(self.buf[1][insertion_pos:])
 
-                            for e in range(steps_in - 1):
-                                self.console.write(b"\010")
+                                        for e in range(steps_in - 1):
+                                            self.console.write(b"\010")
 
-                            del steps_in, insertion_pos
-                    if nb and not tempstack:
+                                        del steps_in, insertion_pos
+                                if nb and not tempstack:
+                                    self.softquit = True
+                    except KeyboardInterrupt:  # Thanks. I hate it.
+                        self.buf[0] = self.trigger_dict["ctrlC"]
                         self.softquit = True
             except KeyboardInterrupt:
-                pass
+                self.buf[0] = self.trigger_dict["ctrlC"]
+                self.softquit = True
             del tempstack
         del segmented, nb
         return self.buf
