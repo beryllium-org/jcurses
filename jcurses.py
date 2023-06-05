@@ -420,7 +420,11 @@ class jcurses:
             del d
         return stack
 
-    def program(self) -> list:
+    def program_non_blocking(self):
+        if self.console.in_waiting:
+            return self.program(nb=True)
+
+    def program(self, nb=False) -> list:
         """
         The main program.
         Depends on variables being already set.
@@ -506,10 +510,12 @@ class jcurses:
                                 self.console.write(b"\010")
 
                             del steps_in, insertion_pos
+                    if nb and not tempstack:
+                        self.softquit = True
             except KeyboardInterrupt:
                 pass
             del tempstack
-        del segmented
+        del segmented, nb
         return self.buf
 
     def termline(self) -> None:
