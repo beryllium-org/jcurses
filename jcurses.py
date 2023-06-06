@@ -195,14 +195,22 @@ class jcurses:
     def clear(self) -> None:
         """
         Clear the whole screen & goto top
+
+        2J clears the current screen
+        3J clears scrollback
+
+        3J should have been enough, but some terminals do also need 2J,
+        so doing both, just to be safe.
         """
         self.console.write(bytes(f"{ESCK}2J{ESCK}3J{ESCK}H", CONV))
 
     def clear_line(self) -> None:
         """
-        Clear the current line
+        Clear the current line.
+
+        2K Clears the line and 0G sends us to it's start.
         """
-        self.console.write(bytes(f"{ESCK}2K{ESCK}500D", CONV))
+        self.console.write(bytes(f"{ESCK}2K{ESCK}0G", CONV))
 
     def start(self) -> None:
         """
@@ -518,12 +526,16 @@ class jcurses:
                                         del steps_in, insertion_pos
                                 if nb and not tempstack:
                                     self.softquit = True
-                    except KeyboardInterrupt:  # Thanks. I hate it.
+                    except KeyboardInterrupt:
                         self.buf[0] = self.trigger_dict["ctrlC"]
                         self.softquit = True
             except KeyboardInterrupt:
                 self.buf[0] = self.trigger_dict["ctrlC"]
                 self.softquit = True
+            """
+            The double try-except is needed because if the user holds down
+            Ctrl + C on a native USB interface the code will still escape.
+            """
             del tempstack
         del segmented, nb
         return self.buf
