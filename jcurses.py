@@ -26,6 +26,7 @@ class jcurses:
         # Temporary buffers that have higher priority over the real deal.
         self.stdin_buf = None
         self.stdout_buf = None  # Can be flushed to the real one, or returned
+        self.stdout_buf_b = bytes()  # Some have already been converted to bytes
         self.hold_stdout = False  # Do not flush stdout_buf
 
         """
@@ -57,27 +58,25 @@ class jcurses:
             self.stdout_buf = ""
         self.stdout_buf += (strr if strr is not None else "") + end
         del strr, end
-
-        if not self.hold_stdout:
-            self.flush_writes()
+        self._auto_flush()
 
     def nwrite(self, strr=None) -> None:
         if self.stdout_buf is None:
             self.stdout_buf = ""
         self.stdout_buf += strr if strr is not None else ""
         del strr
-
-        if not self.hold_stdout:
-            self.flush_writes()
+        self._auto_flush()
 
     def flush_writes(self, to_stdout=True) -> None:
-        if self.stdout_buf is not None:
+        self._flush_to_bytes()
+        if len(self.stdout_buf_b):
             data = None
             if to_stdout:
-                self.console.write(bytes(self.stdout_buf.replace("\n", "\n\r"), CONV))
+                self.console.write(self.stdout_buf_b)
             else:
-                data = self.stdout_buf
-            self.stdout_buf = None
+                data = self.stdout_buf_b
+                # Will fail if there is ansi in here
+            self.stdout_buf_b = bytes()
             if to_stdout:
                 del data
                 return None
@@ -120,44 +119,48 @@ class jcurses:
         """
         Arguably most used key
         """
+        self._flush_to_bytes()
         for i in range(n):
             if len(self.buf[1]) - self.focus > 0:
                 if not self.focus:
                     self.buf[1] = self.buf[1][:-1]
-                    self.console.write(b"\010 \010")
+                    self.stdout_buf_b += b"\010 \010"
                     self.spacerem += 1
                 else:
                     self.spacerem += 1
-                    self.console.write(b"\010")
+                    self.stdout_buf_b += b"\010"
                     insertion_pos = len(self.buf[1]) - self.focus - 1
                     self.buf[
                         1
                     ] = f"{self.buf[1][:insertion_pos]}{self.buf[1][insertion_pos + 1 :]}"  # backend
-                    self.console.write(
-                        bytes(
-                            f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
-                            CONV,
-                        )
+                    self.stdout_buf_b += bytes(
+                        f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
+                        CONV,
                     )  # frontend
                     del insertion_pos
+        self._auto_flush()
 
     def home(self) -> None:
         """
         Go to start of buf
         """
+        self._flush_to_bytes()
         lb = len(self.buf[1])
         df = lb - self.focus
         if df > 0:
             self.focus = lb
-        self.console.write(b"\010" * df)
+        self.stdout_buf_b += b"\010" * df
         del lb, df
+        self._auto_flush()
 
     def end(self) -> None:
         """
         Go to end of buf
         """
-        self.console.write(bytes(f"{ESCK}1C" * self.focus, CONV))
+        self._flush_to_bytes()
+        self.stdout_buf_b += bytes(f"{ESCK}1C" * self.focus, CONV)
         self.focus = 0
+        self._auto_flush()
 
     def overflow_check(self) -> bool:
         if self.spacerem is -1:
@@ -168,12 +171,13 @@ class jcurses:
         """
         Key delete. Like, yea, the del you have on your keyboard under insert
         """
+        self._flush_to_bytes()
         for i in range(n):
             if len(self.buf[1]) > 0 and self.focus:
                 if self.focus == len(self.buf[1]):
                     self.buf[1] = self.buf[1][1:]
-                    self.console.write(
-                        bytes(f"{self.buf[1]} " + "\010" * self.focus, CONV)
+                    self.stdout_buf_b += bytes(
+                        f"{self.buf[1]} " + "\010" * self.focus, CONV
                     )
                     self.spacerem += 1
                     self.focus -= 1
@@ -182,15 +186,14 @@ class jcurses:
                     self.buf[
                         1
                     ] = f"{self.buf[1][:insertion_pos]}{self.buf[1][insertion_pos + 1 :]}"  # backend
-                    self.console.write(
-                        bytes(
-                            f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
-                            CONV,
-                        )
+                    self.stdout_buf_b += bytes(
+                        f"{self.buf[1][insertion_pos:]} {ESCK}{str(len(self.buf[1][insertion_pos:]) + 1)}D",
+                        CONV,
                     )  # frontend
                     self.spacerem += 1
                     self.focus -= 1
                     del insertion_pos
+        self._auto_flush()
 
     def clear(self) -> None:
         """
@@ -202,7 +205,9 @@ class jcurses:
         3J should have been enough, but some terminals do also need 2J,
         so doing both, just to be safe.
         """
-        self.console.write(bytes(f"{ESCK}2J{ESCK}3J{ESCK}H", CONV))
+        self._flush_to_bytes()
+        self.stdout_buf_b += bytes(f"{ESCK}2J{ESCK}3J{ESCK}H", CONV)
+        self._auto_flush()
 
     def clear_line(self) -> None:
         """
@@ -210,7 +215,9 @@ class jcurses:
 
         2K Clears the line and 0G sends us to it's start.
         """
-        self.console.write(bytes(f"{ESCK}2K{ESCK}0G", CONV))
+        self._flush_to_bytes()
+        self.stdout_buf_b += bytes(f"{ESCK}2K{ESCK}0G", CONV)
+        self._auto_flush()
 
     def start(self) -> None:
         """
@@ -326,9 +333,9 @@ class jcurses:
                 if got:
                     sleep(0.0003)
                     """
-                                'Nough time for at least a few more bytes to come, do not change
-                                Without it, the captures right after, would recieve all the garbage
-                                """
+                    'Nough time for at least a few more bytes to come, do not change
+                    Without it, the captures right after, would recieve all the garbage
+                    """
             else:
                 d = False
         del n, d, got
@@ -541,42 +548,56 @@ class jcurses:
         return self.buf
 
     def termline(self) -> None:
-        self.console.write(bytes(self.trigger_dict["prefix"] + self.buf[1], CONV))
+        self._flush_to_bytes()
+        self.stdout_buf_b += bytes(self.trigger_dict["prefix"] + self.buf[1], CONV)
         if self.focus:
-            self.console.write(bytes(f"{ESCK}{self.focus}D", CONV))
+            self.stdout_buf_b += bytes(f"{ESCK}{self.focus}D", CONV)
         self.update_rem()
+        self._auto_flush()
 
     def move(self, ctx=None, x=0, y=0) -> None:
         """
         Move to a specified coordinate or a bookmark.
         If you specified a bookmark, you can use x & y to add an offset.
         """
+        self._flush_to_bytes()
         if ctx is None:
             x, y = max(1, x), max(1, y)
-            self.console.write(bytes(f"{ESCK}{x};{y}H", CONV))
+            self.stdout_buf_b += bytes(f"{ESCK}{x};{y}H", CONV)
         else:
             thectx = self.ctx_dict[ctx]
-            self.console.write(bytes(f"{ESCK}{thectx[0]};{thectx[1]}H", CONV))
+            self.stdout_buf_b += bytes(f"{ESCK}{thectx[0]};{thectx[1]}H", CONV)
 
             # out of bounds check for up and down
             if x + thectx[0] > 0:
                 if thectx[0] > 0:
-                    self.console.write(bytes(f"{ESCK}{thectx[0]}B", CONV))
+                    self.stdout_buf_b += bytes(f"{ESCK}{thectx[0]}B", CONV)
                 else:
-                    self.console.write(bytes(f"{ESCK}{-thectx[0]}A", CONV))
+                    self.stdout_buf_b += bytes(f"{ESCK}{-thectx[0]}A", CONV)
 
             # out of bounds check for right and left
             if y + thectx[1] > 0:
                 if thectx[1] > 0:
-                    self.console.write(bytes(f"{ESCK}{thectx[1]}C", CONV))
+                    self.stdout_buf_b += bytes(f"{ESCK}{thectx[1]}C", CONV)
                 else:  # left
-                    self.console.write(bytes(f"{ESCK}{-thectx[1]}D", CONV))
+                    self.stdout_buf_b += bytes(f"{ESCK}{-thectx[1]}D", CONV)
 
             del thectx
+            self._auto_flush()
 
     def ctx_reg(self, namee) -> None:
         self.ctx_dict[namee] = self.detect_pos()
 
     def line(self, charr) -> None:
         self.clear_line()
-        self.console.write(bytes(charr * self.detect_size()[1], CONV))
+        self.stdout_buf_b += bytes(charr * self.detect_size()[1], CONV)
+        self._auto_flush()
+
+    def _flush_to_bytes(self) -> None:
+        if self.stdout_buf is not None:
+            self.stdout_buf_b += bytes(self.stdout_buf.replace("\n", "\n\r"), CONV)
+            self.stdout_buf = None
+
+    def _auto_flush(self) -> None:
+        if not self.hold_stdout:
+            self.flush_writes()
