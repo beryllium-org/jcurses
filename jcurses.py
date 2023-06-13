@@ -439,7 +439,12 @@ class jcurses:
         Depends on variables being already set.
         """
         self.check_activity()
-        self.softquit = segmented = False
+        if self._active and not self.console.connected:
+            self.buf[0] = self.trigger_dict["idle"]
+            self.softquit = True
+            return self.buf
+        self.softquit = False
+        segmented = False
         self.buf[0] = 0
         self.termline()
         while (
