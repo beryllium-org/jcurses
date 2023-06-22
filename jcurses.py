@@ -424,6 +424,17 @@ class jcurses:
             self.stdin_buf = None
         return stack
 
+    def is_interrupted() -> bool:
+        res = False
+        tempstack = self.register_char()
+        if tempstack is not None:
+            tempstack.reverse()
+            if "ctrlC" in tempstack:
+                res = True
+                # We abandon this buffer
+        del tempstack
+        return res
+
     def program_non_blocking(self):
         """
         The main program, but doesnt block.
