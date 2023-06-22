@@ -424,7 +424,7 @@ class jcurses:
             self.stdin_buf = None
         return stack
 
-    def is_interrupted() -> bool:
+    def is_interrupted(self) -> bool:
         res = False
         tempstack = self.register_char()
         if tempstack is not None:
