@@ -95,26 +95,6 @@ class jcurses:
         if hasattr(self.console, "out_waiting") and self.console.out_waiting:
             self.console.reset_output_buffer()
 
-    def anykey(self, msg=None):
-        """
-        Press any key to continue, returns key
-        Optionally specify message
-        """
-        ret = None
-        n = None
-        if msg is not None:
-            self.console.write(bytes(msg, CONV))
-        del msg
-        while True:
-            sleep(0.5)
-            n = self.console.in_waiting
-            if n:
-                ret = self.console.read(n)
-                self.console.write(b"\n\r")
-                break
-        del n
-        return ret
-
     def backspace(self, n=1) -> None:
         """
         Arguably most used key
