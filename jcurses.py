@@ -89,7 +89,11 @@ class jcurses:
         self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
     def clear_buffer(self) -> None:
+        # Internal
         self.stdin_buf = None
+        self.stdout_buf_b = None
+
+        # External
         if self.console.in_waiting:
             self.console.reset_input_buffer()
         if hasattr(self.console, "out_waiting") and self.console.out_waiting:
