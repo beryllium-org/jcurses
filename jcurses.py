@@ -1,7 +1,7 @@
 from jcurses_data import char_map
-from time import sleep
+from time import sleep, monotonic
 
-ESCK = "\033["
+ESCK = "\x1b["
 CONV = "utf-8"
 
 
@@ -226,43 +226,61 @@ class jcurses:
         self.trigger_dict = None
         self.dmtex_suppress = False
 
-    def detect_size(self) -> list:
+    def detect_size(self):
         """
-        detect terminal size, returns [rows, collumns]
+        Detect terminal size. Returns [rows, collumns] on success.
+        If the terminal is unavailable or unresponsive, return False.
         """
-        d = True
-        res = None
-        while d:
-            try:
-                strr = ""  # cannot be None
+        res = False
+        strr = ""
+        cc = None
+        resi = []
+        prt = None
+        try:
+            # clearing stdin in case of fast pasting
+            self.rem_gib()
 
-                # clearing stdin in case of fast pasting
-                self.rem_gib()
+            for i in range(3):
+                self.get_hw(i)
 
-                for i in range(3):
-                    self.get_hw(i)
-                try:
-                    while not strr.endswith("R"):  # this is an actual loop
-                        strr += self.get_hw(3)
-                except KeyboardInterrupt:
-                    # uh oh, user is late
-                    strr = ""
-                    for i in range(3):
-                        self.get_hw(i)
-                    while not strr.endswith("R"):
-                        strr += self.get_hw(3)
-
-                strr = strr[2:-1]  # this is critical as find will break with <esc>.
-                res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
+            tm = monotonic()
+            while (monotonic() - tm < 1) and (len(resi) != 2):
+                if self.console.in_waiting:
+                    cc = str(self.console.read(1), CONV)
+                    if cc == "\x1b":
+                        cc = str(self.console.read(1), CONV)
+                        if cc == "[":
+                            prt = ""
+                            while monotonic() - tm < 1:
+                                cc = str(self.console.read(1), CONV)
+                                if cc.isdigit():
+                                    prt += cc
+                                elif cc == ";":
+                                    resi.append(int(prt))
+                                    break
+                                else:
+                                    tm += 1
+                            prt = ""
+                            while monotonic() - tm < 1:
+                                cc = str(self.console.read(1), CONV)
+                                if cc.isdigit():
+                                    prt += cc
+                                elif cc == "R":
+                                    resi.append(int(prt))
+                                    break
+                                else:
+                                    tm += 1
+            if len(resi) == 2:
+                res = resi
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
                 self.ctx_dict["line_len"] = res[1]
                 self.spacerem = res[1] - self.detect_pos()[1]
-                del strr
-                d = False
-            except ValueError:
-                pass
-        del d
+        except KeyboardInterrupt:
+            pass
+        except:
+            pass
+        del strr, cc, resi, prt
         return res
 
     def detect_pos(self) -> list:
@@ -278,17 +296,9 @@ class jcurses:
                 # clearing stdin in case of fast pasting
                 self.rem_gib()
 
-                self.get_hw(1)  # we need cleared stdin for this
-                try:
-                    while not strr.endswith("R"):
-                        strr += self.get_hw(3)
-                except KeyboardInterrupt:
-                    # uh oh, user is late
-                    strr = ""
-                    self.get_hw(1)
-                    while not strr.endswith("R"):
-                        strr += self.get_hw(3)
-
+                self.get_hw(1)  # we need an empty stdin for this
+                while not strr.endswith("R"):
+                    strr += str(self.console.read(1), CONV)
                 strr = strr[2:-1]  # this is critical as find will break with <esc>.
                 res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
                 del strr
@@ -337,9 +347,6 @@ class jcurses:
         elif act is 2:
             # go back to original position
             self.console.write(bytes(f"{ESCK}u", CONV))
-        elif act is 3:
-            # get it
-            return str(self.console.read(1), CONV)
 
     def training(self, opt=False) -> None:
         sleep(3)
@@ -589,9 +596,13 @@ class jcurses:
         self.ctx_dict[namee] = self.detect_pos()
 
     def line(self, charr) -> None:
+        # Will not work without a connected console.
         self.clear_line()
-        self.stdout_buf_b += bytes(charr * self.detect_size()[1], CONV)
-        self._auto_flush()
+        tmpsz = self.detect_size()
+        if tmpsz != False:
+            self.stdout_buf_b += bytes(charr * tmpsz[1], CONV)
+            self._auto_flush()
+        del tmpsz
 
     def _flush_to_bytes(self) -> None:
         if self.stdout_buf is not None:
