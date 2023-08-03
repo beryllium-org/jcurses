@@ -259,7 +259,7 @@ class jcurses:
                                     resi.append(int(prt))
                                     break
                                 else:
-                                    tm += 1
+                                    tm += 2 * timeout
                             prt = ""
                             while monotonic() - tm < timeout:
                                 cc = str(self.console.read(1), CONV)
@@ -269,13 +269,15 @@ class jcurses:
                                     resi.append(int(prt))
                                     break
                                 else:
-                                    tm += 1
+                                    tm += 2 * timeout
             if len(resi) == 2:
                 res = resi
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
                 self.ctx_dict["line_len"] = res[1]
                 self.spacerem = res[1] - self.detect_pos()[1]
+            else:
+                self.console.reset_input_buffer()
         except KeyboardInterrupt:
             pass
         except:
