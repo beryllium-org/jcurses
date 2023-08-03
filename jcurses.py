@@ -226,7 +226,7 @@ class jcurses:
         self.trigger_dict = None
         self.dmtex_suppress = False
 
-    def detect_size(self):
+    def detect_size(self, timeout=0.3):
         """
         Detect terminal size. Returns [rows, collumns] on success.
         If the terminal is unavailable or unresponsive, return False.
@@ -244,14 +244,14 @@ class jcurses:
                 self.get_hw(i)
 
             tm = monotonic()
-            while (monotonic() - tm < 1) and (len(resi) != 2):
+            while (monotonic() - tm < timeout) and (len(resi) != 2):
                 if self.console.in_waiting:
                     cc = str(self.console.read(1), CONV)
                     if cc == "\x1b":
                         cc = str(self.console.read(1), CONV)
                         if cc == "[":
                             prt = ""
-                            while monotonic() - tm < 1:
+                            while monotonic() - tm < timeout:
                                 cc = str(self.console.read(1), CONV)
                                 if cc.isdigit():
                                     prt += cc
@@ -261,7 +261,7 @@ class jcurses:
                                 else:
                                     tm += 1
                             prt = ""
-                            while monotonic() - tm < 1:
+                            while monotonic() - tm < timeout:
                                 cc = str(self.console.read(1), CONV)
                                 if cc.isdigit():
                                     prt += cc
@@ -280,7 +280,7 @@ class jcurses:
             pass
         except:
             pass
-        del strr, cc, resi, prt
+        del strr, cc, resi, prt, timeout
         return res
 
     def detect_pos(self) -> list:
