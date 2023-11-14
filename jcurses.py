@@ -451,6 +451,9 @@ class jcurses:
         segmented = False
         self.buf[0] = 0
         self.termline()
+        self.console.write(
+            bytes(f"{ESCK}s{ESCK}1B{ESCK}1C{ESCK}u", CONV)
+        )  # ESP32-Cx my beloved
         while (
             not self.softquit
         ):  # Dear lord, forgive me for the crime I am about to commit.
