@@ -39,6 +39,7 @@ class jcurses:
             "rest_a": allowed keys to be parsed with "rest", not neccessary if rest is set to ignore.
                 Valid values: "all" / "lettersnumbers" / "numbers" / "letters" / "common".
             "echo": Can be "all" / "common" / "none".
+            "permit_pos": Can be True or False.
         """
         self.trigger_dict = None
 
@@ -86,7 +87,8 @@ class jcurses:
             return None
 
     def update_rem(self) -> None:
-        self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
+        if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
+            self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
 
     def clear_buffer(self) -> None:
         # Internal
@@ -277,7 +279,8 @@ class jcurses:
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
                 self.ctx_dict["line_len"] = res[1]
-                self.spacerem = res[1] - self.detect_pos()[1]
+                if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
+                    self.spacerem = res[1] - self.detect_pos()[1]
             else:
                 self.console.reset_input_buffer()
         except KeyboardInterrupt:
@@ -600,7 +603,8 @@ class jcurses:
             self._auto_flush()
 
     def ctx_reg(self, namee) -> None:
-        self.ctx_dict[namee] = self.detect_pos()
+        if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
+            self.ctx_dict[namee] = self.detect_pos()
 
     def line(self, charr) -> None:
         # Will not work without a connected console.
