@@ -231,6 +231,8 @@ class jcurses:
         Detect terminal size. Returns [rows, collumns] on success.
         If the terminal is unavailable or unresponsive, return False.
         """
+        if hasattr(self.console, "size"):
+            return self.console.size
         res = False
         strr = ""
         cc = None
