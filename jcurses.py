@@ -580,10 +580,10 @@ class jcurses:
         self._flush_to_bytes()
         if ctx is None:
             x, y = max(1, x), max(1, y)
-            self.stdout_buf_b += bytes(f"{ESCK}{x};{y}H", CONV)
+            self.stdout_buf_b += bytes(f"{ESCK}{y};{x}H", CONV)
         else:
             thectx = self.ctx_dict[ctx]
-            self.stdout_buf_b += bytes(f"{ESCK}{thectx[0]};{thectx[1]}H", CONV)
+            self.stdout_buf_b += bytes(f"{ESCK}{thectx[1]};{thectx[0]}H", CONV)
 
             # out of bounds check for up and down
             if x + thectx[0] > 0:
