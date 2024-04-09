@@ -433,6 +433,39 @@ class jcurses:
         del tempstack
         return res
 
+    def input(self, prefix="") -> str:
+        res = ""
+        old_tr = self.trigger_dict.copy()
+        self.trigger_dict.clear()
+        self.trigger_dict.update(
+            {
+                "prefix": prefix,
+                "enter": 0,
+                "ctrlD": 0,
+                "ctrlC": 1,
+                "overflow": 1,
+                "rest": "stack",
+                "rest_a": "common",
+                "echo": "common",
+            }
+        )
+        res = ""
+        while True:
+            try:
+                self.buf[1] = ""
+                self.focus = 0
+                self.program()
+                if self.buf[0] is 0:
+                    res = self.buf[1]
+                    break
+            except KeyboardInterrupt:
+                pass
+            except:
+                pass
+        self.trigger_dict = old_tr
+        self.buf[1] = ""
+        return res
+
     def program_non_blocking(self):
         """
         The main program, but doesnt block.
