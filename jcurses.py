@@ -279,7 +279,9 @@ class jcurses:
                 # Let's also update the move bookmarks.
                 self.ctx_dict["bottom_left"] = [res[0], 1]
                 self.ctx_dict["line_len"] = res[1]
-                if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
+                if ("permit_pos" not in self.trigger_dict) or self.trigger_dict[
+                    "permit_pos"
+                ]:
                     self.spacerem = res[1] - self.detect_pos()[1]
             else:
                 self.console.reset_input_buffer()
@@ -599,7 +601,9 @@ class jcurses:
 
     def termline(self) -> None:
         self._flush_to_bytes()
-        self.stdout_buf_b += bytes(self.trigger_dict["prefix"] + self.buf[1], CONV)
+        self.stdout_buf_b += bytes(
+            self.trigger_dict["prefix"].replace("\n", "\n\r") + self.buf[1], CONV
+        )
         if self.focus:
             self.stdout_buf_b += bytes(f"{ESCK}{self.focus}D", CONV)
         self.update_rem()
