@@ -195,15 +195,19 @@ class jcurses:
         self.stdout_buf_b += bytes(f"{ESCK}2J{ESCK}3J{ESCK}H", CONV)
         self._auto_flush()
 
-    def clear_line(self) -> None:
+    def clear_line(self, direct: bool = False) -> None:
         """
         Clear the current line.
 
         2K Clears the line and 0G sends us to it's start.
         """
-        self._flush_to_bytes()
-        self.stdout_buf_b += bytes(f"{ESCK}2K{ESCK}0G", CONV)
-        self._auto_flush()
+        clstr = bytes(f"{ESCK}2K{ESCK}0G", CONV)
+        if not direct:
+            self._flush_to_bytes()
+            self.stdout_buf_b += clstr
+            self._auto_flush()
+        else:
+            self.console.write(clstr)
 
     def start(self) -> None:
         """
