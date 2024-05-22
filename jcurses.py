@@ -49,6 +49,7 @@ class jcurses:
         self.buf = [0, ""]
         self.focus = 0
         self.spacerem = -1
+        self.overflow_enabled = False
 
     def check_activity(self) -> bool:
         self._active = hasattr(self.console, "connected")
@@ -88,7 +89,9 @@ class jcurses:
 
     def update_rem(self) -> None:
         if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
-            self.spacerem = self.ctx_dict["line_len"] - self.detect_pos()[1]
+            tmppos = self.detect_pos()
+            if tmppos is not None:
+                self.spacerem = self.ctx_dict["line_len"] - tmppos[1]
 
     def clear_buffer(self) -> None:
         # Internal
@@ -149,6 +152,8 @@ class jcurses:
         self._auto_flush()
 
     def overflow_check(self) -> bool:
+        if not self.overflow_enabled:
+            return False
         if self.spacerem is -1:
             self.update_rem()
         return False if self.spacerem > 0 else True
@@ -286,7 +291,9 @@ class jcurses:
                 if ("permit_pos" not in self.trigger_dict) or self.trigger_dict[
                     "permit_pos"
                 ]:
-                    self.spacerem = res[1] - self.detect_pos()[1]
+                    tmppos = self.detect_pos()
+                    if tmppos is not None:
+                        self.spacerem = res[1] - tmppos[1]
             else:
                 self.console.reset_input_buffer()
         except KeyboardInterrupt:
@@ -300,9 +307,10 @@ class jcurses:
         """
         detect cursor position, returns [rows, collumns]
         """
-        d = True
+
         res = None
-        while d:
+        st = monotonic()
+        while monotonic()-st < 1:
             try:
                 strr = ""
 
@@ -310,15 +318,14 @@ class jcurses:
                 self.rem_gib()
 
                 self.get_hw(1)  # we need an empty stdin for this
-                while not strr.endswith("R"):
+                while (not strr.endswith("R")) and monotonic()-st < 1:
                     strr += str(self.console.read(1), CONV)
                 strr = strr[2:-1]  # this is critical as find will break with <esc>.
                 res = [int(strr[: strr.find(";")]), int(strr[strr.find(";") + 1 :])]
                 del strr
-                d = False
+                break
             except ValueError:
                 pass
-        del d
         return res
 
     def rem_gib(self) -> None:
@@ -610,7 +617,8 @@ class jcurses:
         )
         if self.focus:
             self.stdout_buf_b += bytes(f"{ESCK}{self.focus}D", CONV)
-        self.update_rem()
+        if self.overflow_enabled:
+            self.update_rem()
         self._auto_flush()
 
     def move(self, ctx=None, x=0, y=0) -> None:
@@ -645,7 +653,9 @@ class jcurses:
 
     def ctx_reg(self, namee) -> None:
         if ("permit_pos" not in self.trigger_dict) or self.trigger_dict["permit_pos"]:
-            self.ctx_dict[namee] = self.detect_pos()
+            tmppos = self.detect_pos()
+            if tmppos is not None:
+                self.ctx_dict[namee] = tmppos
 
     def line(self, charr) -> None:
         # Will not work without a connected console.
