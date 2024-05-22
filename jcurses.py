@@ -77,7 +77,6 @@ class jcurses:
                 self.console.write(self.stdout_buf_b)
             else:
                 data = self.stdout_buf_b
-                # Will fail if there is ansi in here
             self.stdout_buf_b = bytes()
             if to_stdout:
                 del data
@@ -206,7 +205,8 @@ class jcurses:
 
         2K Clears the line and 0G sends us to it's start.
         """
-        clstr = bytes(f"{ESCK}2K{ESCK}0G", CONV)
+        #clstr = bytes(f"{ESCK}2K{ESCK}0G", CONV)
+        clstr = b"\r\033[K"
         if not direct:
             self._flush_to_bytes()
             self.stdout_buf_b += clstr
