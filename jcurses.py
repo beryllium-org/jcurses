@@ -95,6 +95,7 @@ class jcurses:
     def clear_buffer(self) -> None:
         # Internal
         self.stdin_buf = None
+        self.stdout_buf = None
         self.stdout_buf_b = bytes()
 
         # External
