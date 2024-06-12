@@ -613,6 +613,8 @@ class jcurses:
 
     def termline(self) -> None:
         self._flush_to_bytes()
+        if self.buf[1] is None:
+            self.buf[1] = ""
         self.stdout_buf_b += bytes(
             self.trigger_dict["prefix"].replace("\n", "\n\r") + self.buf[1], CONV
         )
