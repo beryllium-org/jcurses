@@ -494,8 +494,7 @@ class jcurses:
         The main program.
         Depends on variables being already set.
         """
-        self.check_activity()
-        if self._active and not self.console.connected:
+        if self.check_activity() and not self.console.connected:
             self.buf[0] = self.trigger_dict["idle"]
             self.softquit = True
             return self.buf
@@ -503,12 +502,7 @@ class jcurses:
         segmented = False
         self.buf[0] = 0
         self.termline()
-        self.console.write(
-            bytes(f"{ESCK}s{ESCK}1B{ESCK}1C{ESCK}u", CONV)
-        )  # ESP32-Cx my beloved
-        while (
-            not self.softquit
-        ):  # Dear lord, forgive me for the crime I am about to commit.
+        while (not self.softquit):
             try:
                 while not self.softquit:
                     try:
@@ -605,7 +599,7 @@ class jcurses:
                 self.softquit = True
             """
             The double try-except is needed because if the user holds down
-            Ctrl + C on a native USB interface the code will still escape.
+            Ctrl + C on a native USB interface the code can escape.
             """
             del tempstack
         del segmented, nb
