@@ -50,6 +50,8 @@ class jcurses:
         self.focus = 0
         self.spacerem = -1
         self.overflow_enabled = False
+        self._sw_cursor_tick = False
+        self._sw_cursor_time = 0
 
     def check_activity(self) -> bool:
         self._active = hasattr(self.console, "connected")
@@ -109,6 +111,8 @@ class jcurses:
         Arguably most used key
         """
         self._flush_to_bytes()
+        if self._sw_cursor_tick:
+            self._sw_curs_restore()
         for i in range(n):
             if len(self.buf[1]) - self.focus > 0:
                 if not self.focus:
@@ -507,6 +511,13 @@ class jcurses:
                 while not self.softquit:
                     try:
                         while not self.softquit:
+                            if hasattr(self.console, "display") and monotonic() - self._sw_cursor_time > 0.4:
+                                if not self._sw_cursor_tick:
+                                    self.console.write(b"_\010")
+                                    self._sw_cursor_tick = True
+                                    self._sw_cursor_time = monotonic()
+                                else:
+                                    self._sw_curs_restore()
                             tempstack = self.register_char()
                             if tempstack:
                                 tempstack.reverse()
@@ -532,10 +543,14 @@ class jcurses:
                                     pass
                                 elif i == "left":
                                     if len(self.buf[1]) > self.focus:
+                                        if self._sw_cursor_tick:
+                                            self._sw_curs_restore()
                                         self.console.write(b"\010")
                                         self.focus += 1
                                 elif i == "right":
                                     if self.focus:
+                                        if self._sw_cursor_tick:
+                                            self._sw_curs_restore()
                                         self.console.write(bytes(f"{ESCK}1C", CONV))
                                         self.focus -= 1
                                 elif self.trigger_dict["rest"] == "stack" and (
@@ -603,6 +618,8 @@ class jcurses:
             """
             del tempstack
         del segmented, nb
+        if self._sw_cursor_tick:
+            self._sw_curs_restore()
         return self.buf
 
     def termline(self) -> None:
@@ -623,6 +640,8 @@ class jcurses:
         Move to a specified coordinate or a bookmark.
         If you specified a bookmark, you can use x & y to add an offset.
         """
+        if self._sw_cursor_tick:
+            self._sw_curs_restore()
         self._flush_to_bytes()
         if ctx is None:
             x, y = max(1, x), max(1, y)
@@ -671,3 +690,11 @@ class jcurses:
     def _auto_flush(self) -> None:
         if not self.hold_stdout:
             self.flush_writes()
+
+    def _sw_curs_restore(self) -> None:
+        replc = b" "
+        if self.focus:
+            replc = bytes(self.buf[1][len(self.buf[1])-self.focus], CONV)
+        self.console.write(replc + b"\010")
+        self._sw_cursor_tick = False
+        self._sw_cursor_time = monotonic()
