@@ -138,12 +138,13 @@ class jcurses:
         Go to start of buf
         """
         self._flush_to_bytes()
+        if self._sw_cursor_tick:
+            self._sw_curs_restore()
         lb = len(self.buf[1])
         df = lb - self.focus
         if df > 0:
             self.focus = lb
         self.stdout_buf_b += b"\010" * df
-        del lb, df
         self._auto_flush()
 
     def end(self) -> None:
@@ -151,7 +152,9 @@ class jcurses:
         Go to end of buf
         """
         self._flush_to_bytes()
-        self.stdout_buf_b += bytes(f"{ESCK}C" * self.focus, CONV)
+        if self._sw_cursor_tick:
+            self._sw_curs_restore()
+        self.stdout_buf_b += self.buf[1][len(self.buf[1])-self.focus:]
         self.focus = 0
         self._auto_flush()
 
