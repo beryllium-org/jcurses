@@ -151,7 +151,7 @@ class jcurses:
         Go to end of buf
         """
         self._flush_to_bytes()
-        self.stdout_buf_b += bytes(f"{ESCK}1C" * self.focus, CONV)
+        self.stdout_buf_b += bytes(f"{ESCK}C" * self.focus, CONV)
         self.focus = 0
         self._auto_flush()
 
@@ -551,7 +551,8 @@ class jcurses:
                                     if self.focus:
                                         if self._sw_cursor_tick:
                                             self._sw_curs_restore()
-                                        self.console.write(bytes(f"{ESCK}1C", CONV))
+                                        self.console.write(self.buf[1][len(self.buf[1])-self.focus:])
+                                        self.console.write(b"\010" * (self.focus - 1))
                                         self.focus -= 1
                                 elif self.trigger_dict["rest"] == "stack" and (
                                     self.trigger_dict["rest_a"] == "common"
